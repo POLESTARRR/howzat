@@ -44,11 +44,38 @@ PROC = ROOT / "data" / "processed"
 MIN_INNINGS = 20
 
 
+def canonicalise(df: pd.DataFrame) -> pd.DataFrame:
+    """Use Statsguru's player id as identity, with one display name per id.
+
+    Names are neither unique nor stable. Pakistan has fielded two "Imran
+    Khan"s, which merged into a single 1971-2019 career with 391 wickets
+    instead of the great one's 362. In the other direction, Richard Hadlee
+    appears as both "RJ Hadlee" and "Sir RJ Hadlee" after his knighthood, which
+    split one career in two. Keying on the id fixes both.
+    """
+    if "player_id" not in df.columns or df["player_id"].isna().all():
+        return df
+    df = df.dropna(subset=["player_id"]).copy()
+    # Prefer the longest name seen for an id: "Sir RJ Hadlee" over "RJ Hadlee".
+    name = (df.groupby("player_id")["player"]
+              .agg(lambda s: max(s.unique(), key=len)))
+
+    # Two ids can still share a name. Disambiguate with the debut year, or the
+    # two Imran Khans re-merge the moment anything groups by name.
+    debut = df.groupby("player_id")["year"].min()
+    dupes = name[name.duplicated(keep=False)]
+    for pid in dupes.index:
+        name.loc[pid] = f"{name.loc[pid]} ({int(debut.loc[pid])})"
+
+    df["player"] = df["player_id"].map(name)
+    return df
+
+
 def load_innings() -> pd.DataFrame:
     df = pd.read_parquet(PROC / "test_innings.parquet")
     df = df.dropna(subset=["runs", "year"]).copy()
     df["decade"] = (df["year"] // 10 * 10).astype(int)
-    return df
+    return canonicalise(df)
 
 
 # ---------------------------------------------------------------- descriptive
@@ -68,11 +95,13 @@ def era_baselines(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def career_table(df: pd.DataFrame) -> pd.DataFrame:
-    g = df.groupby("player")
+    key = "player_id" if "player_id" in df.columns else "player"
+    g = df.groupby(key)
     out = g.agg(
         # Most-frequent country, not first: players appearing for composite sides
         # (Africa XI, World XI, ICC XI) were otherwise labelled by those.
         country=("country", lambda s: s.mode().iat[0] if not s.mode().empty else s.iat[0]),
+        player_name=("player", lambda s: max(s.unique(), key=len)),
         innings=("runs", "size"),
         runs=("runs", "sum"),
         not_outs=("not_out", "sum"),
@@ -81,7 +110,11 @@ def career_table(df: pd.DataFrame) -> pd.DataFrame:
     )
     out["dismissals"] = (out["innings"] - out["not_outs"]).clip(lower=1)
     out["average"] = out["runs"] / out["dismissals"]
-    return out.reset_index()
+    out = out.reset_index()
+    if key == "player_id":
+        names = df.groupby("player_id")["player"].agg(lambda s: max(s.unique(), key=len))
+        out["player"] = out["player_id"].map(names)
+    return out
 
 
 # ------------------------------------------------------------------ the model

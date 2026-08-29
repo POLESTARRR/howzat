@@ -48,7 +48,9 @@ def load_bowling(fmt: str = "test") -> pd.DataFrame:
     df = df.dropna(subset=["balls", "runs_conceded", "wickets", "year"]).copy()
     df = df[df["balls"] > 0]
     df["decade"] = (df["year"] // 10 * 10).astype(int)
-    return df
+    from cri_plus import canonicalise
+
+    return canonicalise(df)
 
 
 def opp_era_offsets(df: pd.DataFrame) -> pd.Series:
@@ -237,9 +239,11 @@ class BowlPlusModel:
 
 
 def careers(df: pd.DataFrame) -> pd.DataFrame:
-    g = df.groupby("player")
+    key = "player_id" if "player_id" in df.columns else "player"
+    g = df.groupby(key)
     out = g.agg(
         country=("country", lambda s: s.mode().iat[0] if not s.mode().empty else s.iat[0]),
+        player=("player", "first"),
         innings=("balls", "size"),
         balls=("balls", "sum"),
         runs_conceded=("runs_conceded", "sum"),
@@ -250,7 +254,10 @@ def careers(df: pd.DataFrame) -> pd.DataFrame:
     out["bowl_average"] = out.runs_conceded / out.wickets.clip(lower=1)
     out["economy"] = out.runs_conceded / (out.balls / 6).clip(lower=1)
     out["strike_rate"] = out.balls / out.wickets.clip(lower=1)
-    return out.reset_index()
+    out = out.reset_index()
+    if key == "player_id" and "player" in out.columns:
+        out = out.drop(columns=["player_id"]).rename(columns={"player": "player"})
+    return out
 
 
 def build(fmt: str = "test", min_balls: int = MIN_BALLS):

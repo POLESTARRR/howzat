@@ -86,15 +86,21 @@ def parse_page(html: str) -> list[dict]:
         if len(rows) < 2:
             continue
         header = [c.get_text(strip=True) for c in rows[0].find_all(["th", "td"])]
-        if not (header[:2] == ["Player", "Runs"] and "Start Date" in header):
+        col = _header_map(header)
+        if not {"Player", "Runs", "Start Date"} <= set(col):
             continue
+
+        def cell(cells, name):
+            i = col.get(name)
+            return cells[i] if i is not None and i < len(cells) else ""
 
         out = []
         for tr in rows[1:]:
-            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
-            if len(cells) < 12:
+            tds = tr.find_all("td")
+            cells = [td.get_text(strip=True) for td in tds]
+            if len(cells) < len(header) - 1:
                 continue
-            player_raw, runs_raw = cells[0], cells[1]
+            player_raw, runs_raw = cell(cells, "Player"), cell(cells, "Runs")
 
             m = re.match(r"^(.*?)\s*\(([^)]*)\)$", player_raw)
             if not m:
@@ -114,29 +120,57 @@ def parse_page(html: str) -> list[dict]:
             out.append(
                 {
                     "player": player,
+                    "player_id": _player_id(tds[col.get("Player", 0)])
+                    if col.get("Player", 0) < len(tds) else None,
                     "country": country,
                     "runs": int(runs_txt),
                     "not_out": not_out,
-                    "mins": num(cells[2]),
-                    "balls_faced": num(cells[3]),
-                    "fours": num(cells[4]),
-                    "sixes": num(cells[5]),
-                    "innings_no": num(cells[7]),
-                    "opposition": cells[9].lstrip("v").strip(),
-                    "ground": cells[10],
-                    "start_date": cells[11],
+                    "mins": num(cell(cells, "Mins")),
+                    "balls_faced": num(cell(cells, "BF")),
+                    "fours": num(cell(cells, "4s")),
+                    "sixes": num(cell(cells, "6s")),
+                    "innings_no": num(cell(cells, "Inns")),
+                    "opposition": cell(cells, "Opposition").lstrip("v").strip(),
+                    "ground": cell(cells, "Ground"),
+                    "start_date": cell(cells, "Start Date"),
                 }
             )
         return out
     return []
 
 
-def parse_bowling_page(html: str) -> list[dict]:
-    """Extract bowling innings rows.
+def _player_id(td) -> str | None:
+    """Statsguru's own player id, taken from the profile link.
 
-    Columns are Player, Overs, Mdns, Runs, Wkts, Econ, Inns, _, Opposition,
-    Ground, Start Date. Overs are recorded in cricket notation (12.3 = twelve
-    overs and three balls), which must be converted before it means anything.
+    Names are not unique. Pakistan has fielded two "Imran Khan"s, and keying on
+    name+country silently merged them into one 1971-2019 career with 391
+    wickets instead of the great one's 362. The href carries a stable id, so
+    use that as the identity and treat the name as a label.
+    """
+    a = td.find("a", href=True)
+    if not a:
+        return None
+    m = re.search(r"/player/(\d+)", a["href"])
+    return m.group(1) if m else None
+
+
+def _header_map(header: list[str]) -> dict[str, int]:
+    """Column name -> index. Statsguru's column set is not fixed."""
+    return {h: i for i, h in enumerate(header) if h}
+
+
+def parse_bowling_page(html: str) -> list[dict]:
+    """Extract bowling innings rows, mapping columns BY NAME.
+
+    Fixed positions silently corrupted three decades of data. In 8-ball-over
+    eras Statsguru inserts a BPO (balls per over) column, shifting everything
+    right by one, so `start_date` read the ground name, `to_datetime` returned
+    NaT, and `dropna` deleted the row. 1946-1979 disappeared without an error
+    -- taking Garry Sobers's 235 wickets with it.
+
+    BPO is also load-bearing in its own right: Australian domestic and Test
+    cricket used 8-ball overs until 1979, so "29.0 overs" is 232 balls there
+    and 174 balls elsewhere.
     """
     soup = BeautifulSoup(html, "lxml")
     for table in soup.find_all("table", class_="engineTable"):
@@ -144,45 +178,60 @@ def parse_bowling_page(html: str) -> list[dict]:
         if len(rows) < 2:
             continue
         header = [c.get_text(strip=True) for c in rows[0].find_all(["th", "td"])]
-        if not (header[:2] == ["Player", "Overs"] and "Start Date" in header):
+        col = _header_map(header)
+        if not {"Player", "Overs", "Wkts", "Start Date"} <= set(col):
             continue
+
+        def cell(cells, name):
+            i = col.get(name)
+            return cells[i] if i is not None and i < len(cells) else ""
 
         out = []
         for tr in rows[1:]:
-            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
-            if len(cells) < 11:
+            tds = tr.find_all("td")
+            cells = [td.get_text(strip=True) for td in tds]
+            if len(cells) < len(header) - 1:
                 continue
-            m = re.match(r"^(.*?)\s*\(([^)]*)\)$", cells[0])
+            m = re.match(r"^(.*?)\s*\(([^)]*)\)$", cell(cells, "Player"))
             if not m:
                 continue
-            overs_raw = cells[1]
+
+            overs_raw = cell(cells, "Overs")
             if overs_raw in NON_INNINGS or not overs_raw:
                 continue
+            # Balls per over defaults to 6, but is stated explicitly when not.
+            try:
+                bpo = int(cell(cells, "BPO") or 6)
+            except ValueError:
+                bpo = 6
             try:
                 whole, _, part = overs_raw.partition(".")
-                balls = int(whole) * 6 + (int(part) if part else 0)
+                balls = int(whole) * bpo + (int(part) if part else 0)
             except ValueError:
                 continue
             if balls <= 0:
                 continue
 
-            def num(v, cast=int):
+            def num(name, cast=int):
                 try:
-                    return cast(v)
+                    return cast(cell(cells, name))
                 except (ValueError, TypeError):
                     return None
 
+            pid_col = col.get("Player", 0)
             out.append({
                 "player": m.group(1).strip(),
+                "player_id": _player_id(tds[pid_col]) if pid_col < len(tds) else None,
                 "country": m.group(2).strip(),
                 "balls": balls,
-                "maidens": num(cells[2]),
-                "runs_conceded": num(cells[3]),
-                "wickets": num(cells[4]),
-                "innings_no": num(cells[6]),
-                "opposition": cells[8].lstrip("v").strip(),
-                "ground": cells[9],
-                "start_date": cells[10],
+                "balls_per_over": bpo,
+                "maidens": num("Mdns"),
+                "runs_conceded": num("Runs"),
+                "wickets": num("Wkts"),
+                "innings_no": num("Inns"),
+                "opposition": cell(cells, "Opposition").lstrip("v").strip(),
+                "ground": cell(cells, "Ground"),
+                "start_date": cell(cells, "Start Date"),
             })
         return out
     return []

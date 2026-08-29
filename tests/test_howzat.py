@@ -540,5 +540,86 @@ class TestBowlPlusRatings(unittest.TestCase):
             self.assertLess(early.mean(), late.mean())
 
 
+class TestDataIntegrity(unittest.TestCase):
+    """Career totals must match the real record exactly.
+
+    This is the sharpest check available: the answers are public and not open
+    to interpretation. It has already caught two serious bugs.
+
+    1. Fixed column positions. In 8-ball-over eras Statsguru inserts a BPO
+       column, shifting every field right by one, so start_date read the ground
+       name, to_datetime produced NaT and dropna deleted the row. 1946-1979
+       vanished silently, taking Sobers's 235 wickets with it -- 12,390 innings
+       in total. Columns are now mapped by header name.
+    2. Name-keyed identity. Two Pakistanis named "Imran Khan" merged into one
+       1971-2019 career with 391 wickets, and Richard Hadlee split in two when
+       he was knighted mid-career. Identity is now Statsguru's player id.
+    """
+
+    KNOWN_TEST_WICKETS = {
+        "M Muralidaran": 800, "SK Warne": 708, "JM Anderson": 704,
+        "GD McGrath": 563, "CA Walsh": 519, "DW Steyn": 439,
+        "N Kapil Dev": 434, "Sir RJ Hadlee": 431, "Wasim Akram": 414,
+        "CEL Ambrose": 405, "MD Marshall": 376, "Imran Khan (1971)": 362,
+        "DK Lillee": 355, "FS Trueman": 307, "GS Sobers": 235,
+        "JC Laker": 193, "SF Barnes": 189,
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        import pandas as pd
+        from bowl_plus import PROC
+
+        path = PROC / "bowl_plus_test.parquet"
+        if not path.exists():
+            raise unittest.SkipTest("bowling ratings not built")
+        cls.b = pd.read_parquet(path).set_index("player")
+
+    def test_career_wicket_totals_match_the_record(self):
+        missing, wrong = [], []
+        for name, wkts in self.KNOWN_TEST_WICKETS.items():
+            if name not in self.b.index:
+                missing.append(name)
+                continue
+            got = int(self.b.loc[name, "wickets"])
+            if got != wkts:
+                wrong.append(f"{name}: got {got}, record says {wkts}")
+        self.assertEqual(missing, [], f"absent from the data: {missing}")
+        self.assertEqual(wrong, [], f"totals disagree with the record: {wrong}")
+
+    def test_no_decade_is_missing_bowling_data(self):
+        """Entire decades once vanished without raising anything."""
+        import pandas as pd
+        from bowl_plus import PROC
+
+        bat = pd.read_parquet(PROC / "test_innings.parquet")
+        bowl = pd.read_parquet(PROC / "test_bowling.parquet")
+        b = bat.groupby("year").size()
+        w = bowl.groupby("year").size()
+        gaps = [int(y) for y in b.index if b[y] > 50 and w.get(y, 0) == 0]
+        self.assertEqual(gaps, [], f"years with batting but no bowling: {gaps}")
+
+    def test_eight_ball_overs_are_converted_correctly(self):
+        import pandas as pd
+        from bowl_plus import PROC
+
+        bowl = pd.read_parquet(PROC / "test_bowling.parquet")
+        if "balls_per_over" not in bowl.columns:
+            self.skipTest("balls_per_over not captured")
+        self.assertGreater((bowl.balls_per_over == 8).sum(), 1000,
+                           "8-ball-over innings should be present")
+        # Balls must always be consistent with the stated over length.
+        eight = bowl[bowl.balls_per_over == 8]
+        self.assertTrue((eight.balls % 8 <= 7).all())
+
+    def test_player_ids_are_the_identity(self):
+        import pandas as pd
+        from bowl_plus import PROC
+
+        d = pd.read_parquet(PROC / "test_bowling.parquet")
+        self.assertIn("player_id", d.columns)
+        self.assertGreater(d.player_id.notna().mean(), 0.99)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

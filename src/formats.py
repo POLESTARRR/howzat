@@ -61,6 +61,9 @@ def load_format(fmt: str) -> pd.DataFrame:
     df = pd.read_parquet(path)
     df = df.dropna(subset=["runs", "year"]).copy()
     df["decade"] = (df["year"] // 10 * 10).astype(int)
+    from cri_plus import canonicalise
+
+    df = canonicalise(df)
     before = len(df)
     df = df[df["opposition"].isin(FULL_MEMBERS)]
     if before and len(df) < before:
