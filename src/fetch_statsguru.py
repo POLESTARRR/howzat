@@ -32,7 +32,13 @@ HEADERS = {
 DELAY = 1.5  # be polite
 
 # Statsguru format codes and the year each format began.
-FORMATS = {"test": (1, 1877), "odi": (2, 1971), "t20i": (3, 2005)}
+# Women's cricket uses classes 8/9/10. It is scraped and rated on exactly the
+# same footing as the men's game: almost no era-adjusted analysis of women's
+# cricket exists anywhere, which makes it the largest unclaimed dataset here.
+FORMATS = {
+    "test": (1, 1877), "odi": (2, 1971), "t20i": (3, 2005),
+    "wtest": (8, 1934), "wodi": (9, 1973), "wt20i": (10, 2004),
+}
 FIRST_TEST_YEAR = 1877
 
 

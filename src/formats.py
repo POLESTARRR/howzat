@@ -35,8 +35,16 @@ from cri_plus import CriPlusModel, career_table
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 
-WEIGHTS = {"test": (1.00, 0.00), "odi": (0.55, 0.45), "t20i": (0.30, 0.70)}
-MIN_INNINGS = {"test": 20, "odi": 25, "t20i": 20}
+WEIGHTS = {
+    "test": (1.00, 0.00), "odi": (0.55, 0.45), "t20i": (0.30, 0.70),
+    "wtest": (1.00, 0.00), "wodi": (0.55, 0.45), "wt20i": (0.30, 0.70),
+}
+MIN_INNINGS = {
+    "test": 20, "odi": 25, "t20i": 20,
+    # Women's Tests are rare — barely 150 have ever been played — so the bar
+    # must be far lower or nobody qualifies at all.
+    "wtest": 8, "wodi": 25, "wt20i": 20,
+}
 
 # ICC Full Members. Ratings only count innings against these sides.
 #
@@ -53,6 +61,31 @@ FULL_MEMBERS = {
     "Zimbabwe",
 }
 
+# Statsguru names women's sides differently ("NZ Women", "SL Women") and
+# abbreviates several. Normalise to the men's spelling so one Full Member set
+# governs both, rather than maintaining two lists that can drift apart.
+_ABBREV = {
+    "NZ": "New Zealand", "SA": "South Africa", "SL": "Sri Lanka",
+    "WI": "West Indies", "UAE": "United Arab Emirates", "PNG": "Papua New Guinea",
+    "USA": "United States of America", "HK": "Hong Kong",
+}
+
+
+def normalise_team(name: str) -> str:
+    """'NZ Women' -> 'New Zealand'. Idempotent for men's names."""
+    n = (name or "").strip()
+    for suffix in (" Women", " Wmn", "-W"):
+        if n.endswith(suffix):
+            n = n[: -len(suffix)].strip()
+    return _ABBREV.get(n, n)
+
+
+WOMENS_FORMATS = {"wtest", "wodi", "wt20i"}
+
+
+def is_womens(fmt: str) -> bool:
+    return fmt in WOMENS_FORMATS
+
 
 def load_format(fmt: str) -> pd.DataFrame:
     path = PROC / f"{fmt}_innings.parquet"
@@ -64,6 +97,8 @@ def load_format(fmt: str) -> pd.DataFrame:
     from cri_plus import canonicalise
 
     df = canonicalise(df)
+    df["opposition"] = df["opposition"].map(normalise_team)
+    df["country"] = df["country"].map(normalise_team)
     before = len(df)
     df = df[df["opposition"].isin(FULL_MEMBERS)]
     if before and len(df) < before:

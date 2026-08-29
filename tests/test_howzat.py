@@ -728,5 +728,47 @@ class TestPeakAcrossFormats(unittest.TestCase):
                                 f"outside {lo}-{hi}")
 
 
+class TestWomensCricket(unittest.TestCase):
+    """Women's cricket is rated on the same footing as the men's game."""
+
+    def test_team_names_normalise_to_one_vocabulary(self):
+        from formats import FULL_MEMBERS, normalise_team
+
+        for raw, want in [("NZ Women", "New Zealand"), ("SL Women", "Sri Lanka"),
+                          ("England Women", "England"), ("WI Women", "West Indies"),
+                          ("SA Women", "South Africa")]:
+            self.assertEqual(normalise_team(raw), want)
+            self.assertIn(normalise_team(raw), FULL_MEMBERS)
+
+    def test_normalisation_is_idempotent_for_mens_names(self):
+        from formats import normalise_team
+
+        for n in ("Australia", "South Africa", "West Indies", "India"):
+            self.assertEqual(normalise_team(n), n)
+            self.assertEqual(normalise_team(normalise_team(n)), n)
+
+    def test_associates_still_excluded_after_normalising(self):
+        from formats import FULL_MEMBERS, normalise_team
+
+        for n in ("Thailand Women", "Netherlands Women", "Scotland Women"):
+            self.assertNotIn(normalise_team(n), FULL_MEMBERS)
+
+    def test_womens_formats_are_registered(self):
+        from fetch_statsguru import FORMATS
+        from formats import MIN_INNINGS, WEIGHTS, is_womens
+
+        for f in ("wtest", "wodi", "wt20i"):
+            self.assertIn(f, FORMATS)
+            self.assertIn(f, WEIGHTS)
+            self.assertIn(f, MIN_INNINGS)
+            self.assertTrue(is_womens(f))
+
+    def test_womens_test_bar_is_lower(self):
+        """Barely 150 women's Tests have ever been played."""
+        from formats import MIN_INNINGS
+
+        self.assertLess(MIN_INNINGS["wtest"], MIN_INNINGS["test"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
