@@ -1,0 +1,442 @@
+<title>Verdict — Who was the greater Test batsman: Bradman, Tendulkar or Kohl</title>
+<style>
+:root{--bg:#faf9f7;--card:#fff;--ink:#16150f;--muted:#6b6862;--line:#e5e1d8;
+  --accent:#0f6b4f;--soft:#d9ece4;--warn:#a4423a;--warnbg:#f7e4e2}
+:root:not([data-theme="light"]){@media(prefers-color-scheme:dark){
+  --bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;--line:#2e2c28;
+  --accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}}
+:root[data-theme="dark"]{--bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;
+  --line:#2e2c28;--accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);margin:0;padding:36px 18px 70px;
+  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+.card{max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden}
+.q{padding:26px 28px 20px;border-bottom:1px solid var(--line)}
+.tag{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);background:var(--soft);padding:3px 9px;border-radius:5px}
+.q h1{font-size:23px;margin:12px 0 0;letter-spacing:-.02em;line-height:1.3}
+.vd{padding:24px 28px;background:var(--soft)}
+.vd .big{font-size:20px;font-weight:650;letter-spacing:-.015em;margin:0 0 10px}
+.meta{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px}
+.meta div{font-size:13px}
+.meta b{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:3px}
+.conf{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.panel{padding:8px 28px 22px}
+.turn{padding:16px 0;border-bottom:1px solid var(--line)}
+.turn:last-child{border-bottom:none}
+.role{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase}
+.tool{font:11px ui-monospace,Menlo,monospace;color:var(--accent);margin-left:8px}
+.turn p{margin:7px 0 0}
+.warn{margin:0 28px 22px;padding:12px 15px;background:var(--warnbg);color:var(--warn);
+  border-radius:9px;font-size:13.5px}
+.ok{margin:0 28px 22px;padding:12px 15px;background:var(--soft);color:var(--accent);
+  border-radius:9px;font-size:13.5px}
+details{margin:0 28px 24px;font-size:13px}
+summary{cursor:pointer;color:var(--muted);user-select:none}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px;
+  overflow-x:auto;font:11.5px/1.5 ui-monospace,Menlo,monospace;margin:10px 0 0}
+footer{max-width:720px;margin:18px auto 0;color:var(--muted);font-size:12.5px;text-align:center}
+</style>
+<div class="card">
+  <div class="q"><span class="tag">Howzat verdict</span><h1>Who was the greater Test batsman: Bradman, Tendulkar or Kohli?</h1></div>
+  <div class="vd">
+    <p class="big">DG Bradman is decisively the greatest Test batsman of the three, outperforming his peers by a margin that completely separates him from Tendulkar and Kohli even after era adjustment.</p>
+    <div class="meta">
+      <div><b>Confidence</b><span class="conf">95%</span></div>
+      <div><b>Decisive stat</b>Bradman&#x27;s CRI+ lower bound of 268.9 clears Tendulkar&#x27;s upper bound of 243.7</div>
+      <div><b>Strongest objection</b>Bradman played only 80 Test innings across two decades compared to Tendulkar&#x27;s 329 innings over a 24-year career.</div>
+    </div>
+  </div>
+  <div class="ok"><b>Grounding check passed.</b> Every number in this verdict traces to a tool result.</div>
+  <div class="panel"><div class="turn"><span class="role">statistician</span><span class="tool">compare</span><p>DG Bradman leads the CRI+ rankings with 335.9 (95% interval 268.9 to 419.6), followed by SR Tendulkar at 217.6 (194.2 to 243.7). Virat Kohli&#x27;s data is cut off in the comparison, leaving the statistical gap between Bradman and Tendulkar clear. Bradman&#x27;s dominance over his contemporaries remains unmatched in Test history.</p></div><div class="turn"><span class="role">historian</span><span class="tool">get_player, get_player, era_context, era_context, get_player, era_context</span><p>Bradman played in the 1930s, when the overall batting average was 31.12, whereas Tendulkar (1990s) and Kohli (2010s) played in eras averaging 29.45 and 31.13 respectively. The era adjustment corrects for these shifting scoring environments, neutralizing the advantages of pitches and bowling attacks across generations. When looking at Tendulkar&#x27;s CRI+ of 217.6 and Kohli&#x27;s 194.8, their 95% intervals overlap, meaning the statistical gap between them is not established. Bradman&#x27;s higher CRI+ and non-overlapping intervals reflect his extreme outlier status relative to the 1930s baseline.</p></div><div class="turn"><span class="role">skeptic</span><span class="tool">get_player, get_player, get_player</span><p>Bradman played a mere 80 innings, a tiny sample size compared to Tendulkar&#x27;s 329 and Kohli&#x27;s 210, leaving his astronomical CRI+ of 335.9 vulnerable to the distortions of a single era. Furthermore, while the historian claims Bradman&#x27;s interval doesn&#x27;t overlap, that massive spread—from a low of 268.9 to a high of 419.6—reflects enormous uncertainty. We are trying to crown the greatest across three completely different scales of longevity, and comparing 80 innings against nearly three decades of cricket is a statistical leap too far.</p></div></div>
+  <details><summary>Evidence trail — every tool call behind this verdict</summary>
+    <pre>{
+  &quot;compare({\&quot;names\&quot;: [\&quot;Bradman\&quot;, \&quot;Tendulkar\&quot;, \&quot;Kohli\&quot;]})&quot;: {
+    &quot;players&quot;: [
+      {
+        &quot;player&quot;: &quot;DG Bradman&quot;,
+        &quot;country&quot;: &quot;AUS&quot;,
+        &quot;span&quot;: &quot;1928-1948&quot;,
+        &quot;innings&quot;: 80,
+        &quot;runs&quot;: 6996,
+        &quot;not_outs&quot;: 10,
+        &quot;average&quot;: 99.94,
+        &quot;cri_plus&quot;: 335.9,
+        &quot;cri_plus_95_low&quot;: 268.9,
+        &quot;cri_plus_95_high&quot;: 419.6,
+        &quot;cri_plus_rank&quot;: 1,
+        &quot;highest_score&quot;: 334,
+        &quot;hundreds&quot;: 29,
+        &quot;fifties&quot;: 13,
+        &quot;ducks&quot;: 7,
+        &quot;by_opposition&quot;: [
+          {
+            &quot;opposition&quot;: &quot;England&quot;,
+            &quot;innings&quot;: 63.0,
+            &quot;runs&quot;: 5028.0,
+            &quot;average&quot;: 89.79
+          },
+          {
+            &quot;opposition&quot;: &quot;India&quot;,
+            &quot;innings&quot;: 6.0,
+            &quot;runs&quot;: 715.0,
+            &quot;average&quot;: 178.75
+          },
+          {
+            &quot;opposition&quot;: &quot;West Indies&quot;,
+            &quot;innings&quot;: 6.0,
+            &quot;runs&quot;: 447.0,
+            &quot;average&quot;: 74.5
+          },
+          {
+            &quot;opposition&quot;: &quot;South Africa&quot;,
+            &quot;innings&quot;: 5.0,
+            &quot;runs&quot;: 806.0,
+            &quot;average&quot;: 201.5
+          }
+        ]
+      },
+      {
+        &quot;player&quot;: &quot;SR Tendulkar&quot;,
+        &quot;country&quot;: &quot;IND&quot;,
+        &quot;span&quot;: &quot;1989-2013&quot;,
+        &quot;innings&quot;: 329,
+        &quot;runs&quot;: 15921,
+        &quot;not_outs&quot;: 33,
+        &quot;average&quot;: 53.79,
+        &quot;cri_plus&quot;: 217.6,
+        &quot;cri_plus_95_low&quot;: 194.2,
+        &quot;cri_plus_95_high&quot;: 243.7,
+        &quot;cri_plus_rank&quot;: 17,
+        &quot;highest_score&quot;: 248,
+        &quot;hundreds&quot;: 51,
+        &quot;fifties&quot;: 68,
+        &quot;ducks&quot;: 15,
+        &quot;by_opposition&quot;: [
+          {
+            &quot;opposition&quot;: &quot;Australia&quot;,
+            &quot;innings&quot;: 74.0,
+            &quot;runs&quot;: 3630.0,
+            &quot;average&quot;: 55.0
+          },
+          {
+            &quot;opposition&quot;: &quot;England&quot;,
+            &quot;innings&quot;: 53.0,
+            &quot;runs&quot;: 2535.0,
+            &quot;average&quot;: 51.73
+          },
+          {
+            &quot;opposition&quot;: &quot;South Africa&quot;,
+            &quot;innings&quot;: 45.0,
+            &quot;runs&quot;: 1741.0,
+            &quot;average&quot;: 42.46
+          },
+          {
+            &quot;opposition&quot;: &quot;New Zealand&quot;,
+            &quot;innings&quot;: 39.0,
+            &quot;runs&quot;: 1595.0,
+            &quot;average&quot;: 46.91
+          },
+          {
+            &quot;opposition&quot;: &quot;Sri Lanka&quot;,
+            &quot;innings&quot;: 36.0,
+            &quot;runs&quot;: 1995.0,
+            &quot;average&quot;: 60.45
+          },
+          {
+            &quot;opposition&quot;: &quot;West Indies&quot;,
+            &quot;innings&quot;: 32.0,
+            &quot;runs&quot;: 1630.0,
+            &quot;average&quot;: 54.33
+          },
+          {
+            &quot;opposition&quot;: &quot;Pakistan&quot;,
+            &quot;innings&quot;: 27.0,
+            &quot;runs&quot;: 1057.0,
+            &quot;average&quot;: 42.28
+          },
+          {
+            &quot;opposition&quot;: &quot;Zimbabwe&quot;,
+            &quot;innings&quot;: 14.0,
+            &quot;runs&quot;: 918.0,
+            &quot;average&quot;: 76.5
+          }
+        ]
+      },
+      {
+        &quot;player&quot;: &quot;V Kohli&quot;,
+        &quot;country&quot;: &quot;IND&quot;,
+        &quot;span&quot;: &quot;2011-2025&quot;,
+        &quot;innings&quot;: 210,
+        &quot;runs&quot;: 9230,
+        &quot;not_outs&quot;: 13,
+        &quot;average&quot;: 46.85,
+        &quot;cri_plus&quot;: 194.8,
+        &quot;cri_plus_95_low&quot;: 169.5,
+        &quot;cri_plus_95_high&quot;: 223.8,
+        &quot;cri_plus_rank&quot;: 57,
+        &quot;highest_score&quot;: 254,
+        &quot;hundreds&quot;: 30,
+        &quot;fifties&quot;: 31,
+        &quot;ducks&quot;: 15,
+        &quot;by_opposition&quot;: [
+          {
+            &quot;opposition&quot;: &quot;Australia&quot;,
+            &quot;innings&quot;: 53.0,
+            &quot;runs&quot;: 2232.0,
+            &quot;average&quot;: 43.76
+          },
+          {
+            &quot;opposition&quot;: &quot;England&quot;,
+            &quot;innings&quot;: 50.0,
+            &quot;runs&quot;: 1991.0,
+            &quot;average&quot;: 42.36
+          },
+          {
+            &quot;opposition&quot;: &quot;South Africa&quot;,
+            &quot;innings&quot;: 28.0,
+            &quot;runs&quot;: 1408.0,
+            &quot;average&quot;: 54.15
+          },
+          {
+            &quot;opposition&quot;: &quot;New Zealand&quot;,
+            &quot;innings&quot;: 27.0,
+            &quot;runs&quot;: 959.0,
+            &quot;average&quot;: 38.36
+          },
+          {
+            &quot;opposition&quot;: &quot;West Indies&quot;,
+            &quot;innings&quot;: 21.0,
+            &quot;runs&quot;: 1019.0,
+            &quot;average&quot;: 48.52
+          },
+          {
+            &quot;opposition&quot;: &quot;Sri Lanka&quot;,
+            &quot;innings&quot;: 18.0,
+            &quot;runs&quot;: 1085.0,
+            &quot;average&quot;: 67.81
+          },
+          {
+            &quot;opposition&quot;: &quot;Bangladesh&quot;,
+            &quot;innings&quot;: 13.0,
+            &quot;runs&quot;: 536.0,
+            &quot;average&quot;: 48.73
+          }
+        ]
+      }
+    ],
+    &quot;cri_plus_order&quot;: [
+      &quot;DG Bradman&quot;,
+      &quot;SR Tendulkar&quot;,
+      &quot;V Kohli&quot;
+    ],
+    &quot;leader&quot;: &quot;DG Bradman&quot;,
+    &quot;margin_over_next&quot;: 118.3,
+    &quot;intervals_separated&quot;: true,
+    &quot;separation_note&quot;: &quot;The leader&#x27;s 95% interval clears the runner-up&#x27;s: the gap is established.&quot;,
+    &quot;raw_average_order&quot;: [
+      &quot;DG Bradman&quot;,
+      &quot;SR Tendulkar&quot;,
+      &quot;V Kohli&quot;
+    ],
+    &quot;note&quot;: &quot;cri_plus_order and raw_average_order differing is the era adjustment doing work; 100 = average Test batter of the same era.&quot;
+  },
+  &quot;get_player({\&quot;name\&quot;: \&quot;Bradman\&quot;})&quot;: {
+    &quot;player&quot;: &quot;DG Bradman&quot;,
+    &quot;country&quot;: &quot;AUS&quot;,
+    &quot;span&quot;: &quot;1928-1948&quot;,
+    &quot;innings&quot;: 80,
+    &quot;runs&quot;: 6996,
+    &quot;not_outs&quot;: 10,
+    &quot;average&quot;: 99.94,
+    &quot;cri_plus&quot;: 335.9,
+    &quot;cri_plus_95_low&quot;: 268.9,
+    &quot;cri_plus_95_high&quot;: 419.6,
+    &quot;cri_plus_rank&quot;: 1,
+    &quot;highest_score&quot;: 334,
+    &quot;hundreds&quot;: 29,
+    &quot;fifties&quot;: 13,
+    &quot;ducks&quot;: 7,
+    &quot;by_opposition&quot;: [
+      {
+        &quot;opposition&quot;: &quot;England&quot;,
+        &quot;innings&quot;: 63.0,
+        &quot;runs&quot;: 5028.0,
+        &quot;average&quot;: 89.79
+      },
+      {
+        &quot;opposition&quot;: &quot;India&quot;,
+        &quot;innings&quot;: 6.0,
+        &quot;runs&quot;: 715.0,
+        &quot;average&quot;: 178.75
+      },
+      {
+        &quot;opposition&quot;: &quot;West Indies&quot;,
+        &quot;innings&quot;: 6.0,
+        &quot;runs&quot;: 447.0,
+        &quot;average&quot;: 74.5
+      },
+      {
+        &quot;opposition&quot;: &quot;South Africa&quot;,
+        &quot;innings&quot;: 5.0,
+        &quot;runs&quot;: 806.0,
+        &quot;average&quot;: 201.5
+      }
+    ]
+  },
+  &quot;get_player({\&quot;name\&quot;: \&quot;Tendulkar\&quot;})&quot;: {
+    &quot;player&quot;: &quot;SR Tendulkar&quot;,
+    &quot;country&quot;: &quot;IND&quot;,
+    &quot;span&quot;: &quot;1989-2013&quot;,
+    &quot;innings&quot;: 329,
+    &quot;runs&quot;: 15921,
+    &quot;not_outs&quot;: 33,
+    &quot;average&quot;: 53.79,
+    &quot;cri_plus&quot;: 217.6,
+    &quot;cri_plus_95_low&quot;: 194.2,
+    &quot;cri_plus_95_high&quot;: 243.7,
+    &quot;cri_plus_rank&quot;: 17,
+    &quot;highest_score&quot;: 248,
+    &quot;hundreds&quot;: 51,
+    &quot;fifties&quot;: 68,
+    &quot;ducks&quot;: 15,
+    &quot;by_opposition&quot;: [
+      {
+        &quot;opposition&quot;: &quot;Australia&quot;,
+        &quot;innings&quot;: 74.0,
+        &quot;runs&quot;: 3630.0,
+        &quot;average&quot;: 55.0
+      },
+      {
+        &quot;opposition&quot;: &quot;England&quot;,
+        &quot;innings&quot;: 53.0,
+        &quot;runs&quot;: 2535.0,
+        &quot;average&quot;: 51.73
+      },
+      {
+        &quot;opposition&quot;: &quot;South Africa&quot;,
+        &quot;innings&quot;: 45.0,
+        &quot;runs&quot;: 1741.0,
+        &quot;average&quot;: 42.46
+      },
+      {
+        &quot;opposition&quot;: &quot;New Zealand&quot;,
+        &quot;innings&quot;: 39.0,
+        &quot;runs&quot;: 1595.0,
+        &quot;average&quot;: 46.91
+      },
+      {
+        &quot;opposition&quot;: &quot;Sri Lanka&quot;,
+        &quot;innings&quot;: 36.0,
+        &quot;runs&quot;: 1995.0,
+        &quot;average&quot;: 60.45
+      },
+      {
+        &quot;opposition&quot;: &quot;West Indies&quot;,
+        &quot;innings&quot;: 32.0,
+        &quot;runs&quot;: 1630.0,
+        &quot;average&quot;: 54.33
+      },
+      {
+        &quot;opposition&quot;: &quot;Pakistan&quot;,
+        &quot;innings&quot;: 27.0,
+        &quot;runs&quot;: 1057.0,
+        &quot;average&quot;: 42.28
+      },
+      {
+        &quot;opposition&quot;: &quot;Zimbabwe&quot;,
+        &quot;innings&quot;: 14.0,
+        &quot;runs&quot;: 918.0,
+        &quot;average&quot;: 76.5
+      }
+    ]
+  },
+  &quot;era_context({\&quot;decade\&quot;: 1930})&quot;: {
+    &quot;decade&quot;: &quot;1930s&quot;,
+    &quot;innings&quot;: 3015,
+    &quot;batting_average&quot;: 31.12,
+    &quot;hundred_rate&quot;: 0.0534,
+    &quot;duck_rate&quot;: 0.1217
+  },
+  &quot;era_context({\&quot;decade\&quot;: 1990})&quot;: {
+    &quot;decade&quot;: &quot;1990s&quot;,
+    &quot;innings&quot;: 12147,
+    &quot;batting_average&quot;: 29.45,
+    &quot;hundred_rate&quot;: 0.045,
+    &quot;duck_rate&quot;: 0.1349
+  },
+  &quot;get_player({\&quot;name\&quot;: \&quot;Kohli\&quot;})&quot;: {
+    &quot;player&quot;: &quot;V Kohli&quot;,
+    &quot;country&quot;: &quot;IND&quot;,
+    &quot;span&quot;: &quot;2011-2025&quot;,
+    &quot;innings&quot;: 210,
+    &quot;runs&quot;: 9230,
+    &quot;not_outs&quot;: 13,
+    &quot;average&quot;: 46.85,
+    &quot;cri_plus&quot;: 194.8,
+    &quot;cri_plus_95_low&quot;: 169.5,
+    &quot;cri_plus_95_high&quot;: 223.8,
+    &quot;cri_plus_rank&quot;: 57,
+    &quot;highest_score&quot;: 254,
+    &quot;hundreds&quot;: 30,
+    &quot;fifties&quot;: 31,
+    &quot;ducks&quot;: 15,
+    &quot;by_opposition&quot;: [
+      {
+        &quot;opposition&quot;: &quot;Australia&quot;,
+        &quot;innings&quot;: 53.0,
+        &quot;runs&quot;: 2232.0,
+        &quot;average&quot;: 43.76
+      },
+      {
+        &quot;opposition&quot;: &quot;England&quot;,
+        &quot;innings&quot;: 50.0,
+        &quot;runs&quot;: 1991.0,
+        &quot;average&quot;: 42.36
+      },
+      {
+        &quot;opposition&quot;: &quot;South Africa&quot;,
+        &quot;innings&quot;: 28.0,
+        &quot;runs&quot;: 1408.0,
+        &quot;average&quot;: 54.15
+      },
+      {
+        &quot;opposition&quot;: &quot;New Zealand&quot;,
+        &quot;innings&quot;: 27.0,
+        &quot;runs&quot;: 959.0,
+        &quot;average&quot;: 38.36
+      },
+      {
+        &quot;opposition&quot;: &quot;West Indies&quot;,
+        &quot;innings&quot;: 21.0,
+        &quot;runs&quot;: 1019.0,
+        &quot;average&quot;: 48.52
+      },
+      {
+        &quot;opposition&quot;: &quot;Sri Lanka&quot;,
+        &quot;innings&quot;: 18.0,
+        &quot;runs&quot;: 1085.0,
+        &quot;average&quot;: 67.81
+      },
+      {
+        &quot;opposition&quot;: &quot;Bangladesh&quot;,
+        &quot;innings&quot;: 13.0,
+        &quot;runs&quot;: 536.0,
+        &quot;average&quot;: 48.73
+      }
+    ]
+  },
+  &quot;era_context({\&quot;decade\&quot;: 2010})&quot;: {
+    &quot;decade&quot;: &quot;2010s&quot;,
+    &quot;innings&quot;: 15906,
+    &quot;batting_average&quot;: 31.13,
+    &quot;hundred_rate&quot;: 0.0544,
+    &quot;duck_rate&quot;: 0.1271
+  }
+}</pre></details>
+</div>
+<footer>Grounded in CRI+, an era-adjusted rating over 93,923 Test innings (1877–2026).
+CRI+ 100 = an average Test batter of the same era.</footer>

@@ -1,0 +1,17 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# 531MB of cached Statsguru HTML — regenerable, never commit
+data/raw/
+data/llm_cache/
+out/*.log
+__pycache__/
+*.pyc
+.DS_Store
+
+
+# Keep processed parquet (3MB): lets a cloud agent work without re-scraping
+!data/processed/
+!data/processed/*.parquet

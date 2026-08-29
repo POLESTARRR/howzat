@@ -1,0 +1,107 @@
+"""Render a debate transcript as a shareable verdict card.
+
+The card shows the panel's reasoning and the evidence trail, not just the
+answer. A verdict you cannot audit is worth no more than the argument it was
+meant to settle -- so the grounding result is printed on the card itself, even
+when it is unflattering.
+"""
+
+from __future__ import annotations
+
+import html
+import json
+from typing import Any
+
+CSS = """
+:root{--bg:#faf9f7;--card:#fff;--ink:#16150f;--muted:#6b6862;--line:#e5e1d8;
+  --accent:#0f6b4f;--soft:#d9ece4;--warn:#a4423a;--warnbg:#f7e4e2}
+:root:not([data-theme="light"]){@media(prefers-color-scheme:dark){
+  --bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;--line:#2e2c28;
+  --accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}}
+:root[data-theme="dark"]{--bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;
+  --line:#2e2c28;--accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);margin:0;padding:36px 18px 70px;
+  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+.card{max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden}
+.q{padding:26px 28px 20px;border-bottom:1px solid var(--line)}
+.tag{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);background:var(--soft);padding:3px 9px;border-radius:5px}
+.q h1{font-size:23px;margin:12px 0 0;letter-spacing:-.02em;line-height:1.3}
+.vd{padding:24px 28px;background:var(--soft)}
+.vd .big{font-size:20px;font-weight:650;letter-spacing:-.015em;margin:0 0 10px}
+.meta{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px}
+.meta div{font-size:13px}
+.meta b{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:3px}
+.conf{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.panel{padding:8px 28px 22px}
+.turn{padding:16px 0;border-bottom:1px solid var(--line)}
+.turn:last-child{border-bottom:none}
+.role{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase}
+.tool{font:11px ui-monospace,Menlo,monospace;color:var(--accent);margin-left:8px}
+.turn p{margin:7px 0 0}
+.warn{margin:0 28px 22px;padding:12px 15px;background:var(--warnbg);color:var(--warn);
+  border-radius:9px;font-size:13.5px}
+.ok{margin:0 28px 22px;padding:12px 15px;background:var(--soft);color:var(--accent);
+  border-radius:9px;font-size:13.5px}
+details{margin:0 28px 24px;font-size:13px}
+summary{cursor:pointer;color:var(--muted);user-select:none}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px;
+  overflow-x:auto;font:11.5px/1.5 ui-monospace,Menlo,monospace;margin:10px 0 0}
+footer{max-width:720px;margin:18px auto 0;color:var(--muted);font-size:12.5px;text-align:center}
+"""
+
+
+def render_card(tr: Any) -> str:
+    v = tr.verdict or {}
+    e = html.escape
+
+    turns = "".join(
+        f'<div class="turn"><span class="role">{e(t.role)}</span>'
+        + (f'<span class="tool">{e(", ".join(c["name"] for c in t.tool_calls))}</span>'
+           if t.tool_calls else "")
+        + f"<p>{e(t.text)}</p></div>"
+        for t in tr.turns[:-1] if t.text
+    )
+
+    ung = tr.ungrounded_numbers()
+    grounding = (
+        f'<div class="warn"><b>Grounding check failed.</b> '
+        f'{len(ung)} number(s) in this verdict were never returned by a tool: '
+        f'{e(", ".join(ung))}. Treat them as unsupported.</div>'
+        if ung else
+        '<div class="ok"><b>Grounding check passed.</b> '
+        'Every number in this verdict traces to a tool result.</div>'
+    )
+
+    conf = v.get("confidence")
+    conf_html = f'<span class="conf">{e(str(conf))}%</span>' if conf is not None else "—"
+    dissent = (
+        f'<div><b>Strongest objection</b>{e(str(v["dissent"]))}</div>'
+        if v.get("dissent") else ""
+    )
+
+    evidence = e(json.dumps(tr.facts, indent=2, default=str)[:9000])
+
+    return f"""<title>Verdict — {e(tr.question[:60])}</title>
+<style>{CSS}</style>
+<div class="card">
+  <div class="q"><span class="tag">Howzat verdict</span><h1>{e(tr.question)}</h1></div>
+  <div class="vd">
+    <p class="big">{e(str(v.get("verdict", "no verdict")))}</p>
+    <div class="meta">
+      <div><b>Confidence</b>{conf_html}</div>
+      <div><b>Decisive stat</b>{e(str(v.get("decisive_stat") or "—"))}</div>
+      {dissent}
+    </div>
+  </div>
+  {grounding}
+  <div class="panel">{turns}</div>
+  <details><summary>Evidence trail — every tool call behind this verdict</summary>
+    <pre>{evidence}</pre></details>
+</div>
+<footer>Grounded in CRI+, an era-adjusted rating over 93,923 Test innings (1877–2026).
+CRI+ 100 = an average Test batter of the same era.</footer>"""
