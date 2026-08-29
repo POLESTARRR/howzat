@@ -23,6 +23,10 @@ session, the cloud routine does not.
    after, for every Law and playing-condition change. This is a standing
    priority, not a one-off.
 5. Next unfinished item in `BACKLOG.md`.
+6. **When the backlog empties, brainstorm.** Promote an idea from `IDEAS.md`,
+   or add new ones. An empty queue is not a reason to stop — it is the signal
+   to think about what this project could become next. Explore new directions
+   actively; do not wait to be told.
 
 ## The 95% rule
 
