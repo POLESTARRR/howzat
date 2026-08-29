@@ -12,7 +12,7 @@ Never idle. When bugs are clear, pull the next item. When this empties, add more
 - [x] Static explorer, four tabs, no backend
 
 ## Next
-1. BOWL+ for T20I (scrape running).
+1. [DONE] BOWL+ all three formats.
 2. Home/away split as a model term — unmodelled and known to matter.
 3. Batting-position covariate: tail-enders drag the era baseline.
 4. Expand `src/evalset.py`; run it live and record a baseline score.

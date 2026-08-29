@@ -85,7 +85,47 @@ CHANGES: list[RuleChange] = [
     RuleChange("t20_free_hit", 2007, ("t20i",),
                "Free hit after a front-foot no-ball",
                "small increase", confounded=True),
+    RuleChange("six_ball_over", 1900, ("test",),
+               "Over standardised at six balls in England",
+               "unclear", confounded=True),
+    RuleChange("boundary_six", 1910, ("test",),
+               "Six awarded for clearing the boundary, not the ground",
+               "should raise scoring"),
+    RuleChange("end_eight_ball", 1979, ("test",),
+               "Eight-ball overs abolished in Australia",
+               "unclear: fewer balls per over, more overs"),
+    RuleChange("laws_2000", 2000, ("test", "odi"),
+               "Laws of Cricket 2000 Code rewrite",
+               "unclear", confounded=True),
+    RuleChange("drs_test", 2009, ("test",),
+               "Decision Review System introduced in Tests",
+               "should favour bowlers: fewer missed LBWs"),
+    RuleChange("drs_odi", 2011, ("odi",),
+               "DRS in ODIs", "should favour bowlers", confounded=True),
+    RuleChange("odi_fielding_1996", 1996, ("odi",),
+               "Fielding-circle restrictions tightened for the first 15 overs",
+               "should raise scoring"),
+    RuleChange("t20_two_bouncers", 2024, ("t20i",),
+               "Two bouncers per over permitted",
+               "should favour bowlers"),
 ]
+
+
+# Outcome measures. Each is reported separately, because a rule can move the
+# scoring rate without moving the average, or vice versa. Reporting only runs
+# per dismissal would have missed the 1910 six rule entirely.
+def _rate_metrics(d: pd.DataFrame) -> dict[str, float]:
+    out = {"runs_per_dismissal": _runs_per_dismissal(d)}
+    bf = d.dropna(subset=["balls_faced"])
+    bf = bf[bf["balls_faced"] > 0]
+    if len(bf) >= 200:
+        out["runs_per_ball"] = float(bf.runs.sum()) / float(bf.balls_faced.sum())
+    if "sixes" in d.columns and d["sixes"].notna().sum() >= 200:
+        sx = d.dropna(subset=["sixes"])
+        out["sixes_per_innings"] = float(sx.sixes.mean())
+    out["duck_rate"] = float((d.runs == 0).mean())
+    out["fifty_plus_rate"] = float((d.runs >= 50).mean())
+    return out
 
 
 def _runs_per_dismissal(d: pd.DataFrame) -> float:
@@ -134,8 +174,11 @@ def _its(df: pd.DataFrame, year: int, window: int):
     yearly = (df.groupby("year")
                 .apply(_runs_per_dismissal, include_groups=False)
                 .rename("rpd").reset_index())
+    yearly = yearly[np.isfinite(yearly.rpd)]
     pre = yearly[(yearly.year >= year - window) & (yearly.year < year)]
     post = yearly[(yearly.year >= year) & (yearly.year < year + window)]
+    # A rule too recent to have a post-period cannot be trend-tested. Say so by
+    # returning None rather than emitting a NaN that reads like a measurement.
     if len(pre) < 4 or len(post) < 4:
         return None
     slope, intercept = np.polyfit(pre.year, pre.rpd, 1)
@@ -144,6 +187,8 @@ def _its(df: pd.DataFrame, year: int, window: int):
     sd = float(resid.std(ddof=2)) or 1e-9
     departure = float((post.rpd - projected).mean())
     se = sd / np.sqrt(len(post))
+    if not np.isfinite(departure) or not np.isfinite(se):
+        return None
     return departure, departure - 1.96 * se, departure + 1.96 * se
 
 

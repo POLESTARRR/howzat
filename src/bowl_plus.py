@@ -34,7 +34,15 @@ from scipy.optimize import minimize
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 
-MIN_BALLS = 3000  # roughly 500 overs: enough for a rating to mean something
+# Qualification must scale with the format. A T20I bowler delivers 24 balls a
+# match, so a Test-sized threshold of 3000 excluded almost every T20I bowler,
+# left an empty frame, and produced NaNs rather than an error.
+MIN_BALLS_BY_FORMAT = {
+    "test": 3000,   # ~500 overs
+    "odi": 1500,    # ~250 overs
+    "t20i": 600,    # ~100 overs, i.e. ~25 matches
+}
+MIN_BALLS = MIN_BALLS_BY_FORMAT["test"]
 
 
 def load_bowling(fmt: str = "test") -> pd.DataFrame:
@@ -260,11 +268,18 @@ def careers(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build(fmt: str = "test", min_balls: int = MIN_BALLS):
+def build(fmt: str = "test", min_balls: int | None = None):
+    if min_balls is None:
+        min_balls = MIN_BALLS_BY_FORMAT.get(fmt, MIN_BALLS)
     df = load_bowling(fmt)
     c = careers(df)
     keep = c.loc[c["balls"] >= min_balls, "player"]
     sub = df[df["player"].isin(keep)].copy()
+    if sub.empty:
+        raise ValueError(
+            f"no {fmt} bowler reaches {min_balls} balls; threshold is wrong "
+            f"for this format (max is {int(c.balls.max())})"
+        )
 
     model = BowlPlusModel().fit_eb(sub)
     out = c.merge(model.ratings(sub), on="player", how="inner")
@@ -278,7 +293,8 @@ if __name__ == "__main__":
 
     fmt = sys.argv[1] if len(sys.argv) > 1 else "test"
     df, model, out = build(fmt)
-    print(f"{len(df):,} bowling innings -> {len(out):,} rated (>= {MIN_BALLS} balls)")
+    print(f"{len(df):,} bowling innings -> {len(out):,} rated "
+          f"(>= {MIN_BALLS_BY_FORMAT.get(fmt, MIN_BALLS)} balls)")
     print(f"converged={model.result_.success}  EB ridge={model.ridge:.3f}\n")
     cols = ["player", "country", "wickets", "bowl_average", "bowl_plus",
             "bowl_lo", "bowl_hi"]
