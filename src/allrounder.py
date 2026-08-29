@@ -30,10 +30,15 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 
-MIN_INNINGS = 30      # real batting workload
-MIN_BALLS = 3000      # real bowling workload (~500 overs)
-MIN_WICKETS = 75      # actually a bowler, not an occasional one
-MAX_BALLS_PER_WICKET = 85  # bowled to take wickets, not to rest the quicks
+# Workload thresholds scale with the format. A T20I bowler delivers 24 balls a
+# match, so Test-sized bars would qualify nobody.
+QUAL = {
+    #        inns  balls  wkts  max balls/wkt
+    "test": (30,   3000,  75,   85),
+    "odi":  (40,   1500,  50,   60),
+    "t20i": (30,   600,   25,   30),
+}
+MIN_INNINGS, MIN_BALLS, MIN_WICKETS, MAX_BALLS_PER_WICKET = QUAL["test"]
 
 # Balls alone is not enough. Allan Border accumulated 3,185 balls across a
 # 265-innings career and took 33 wickets at 38 -- a batsman who turned an arm
@@ -59,16 +64,18 @@ def build(fmt: str = "test") -> pd.DataFrame:
     w = bowl[["player", "wickets", "balls", "bowl_average", "bowl_plus"]]
 
     d = b.merge(w, on="player", how="inner")
-    d = d[(d.innings >= MIN_INNINGS)
-          & (d.balls >= MIN_BALLS)
-          & (d.wickets >= MIN_WICKETS)
-          & (d.balls / d.wickets.clip(lower=1) <= MAX_BALLS_PER_WICKET)].copy()
+    min_inns, min_balls, min_wkts, max_bpw = QUAL.get(fmt, QUAL["test"])
+    d = d[(d.innings >= min_inns)
+          & (d.balls >= min_balls)
+          & (d.wickets >= min_wkts)
+          & (d.balls / d.wickets.clip(lower=1) <= max_bpw)].copy()
 
     x, y = d.bat_rating.clip(lower=1), d.bowl_plus.clip(lower=1)
     d["all_plus"] = 2 * x * y / (x + y)
     # How lopsided they are: 0 = perfectly balanced, 1 = entirely one-sided.
     d["imbalance"] = (x - y).abs() / (x + y)
 
+    d["format"] = fmt
     d = d.sort_values("all_plus", ascending=False).reset_index(drop=True)
     d.to_parquet(PROC / f"all_plus_{fmt}.parquet", index=False)
     return d
@@ -81,8 +88,9 @@ if __name__ == "__main__":
     d = build(fmt)
     cols = ["player", "country", "innings", "bat_average", "bat_rating",
             "wickets", "bowl_average", "bowl_plus", "all_plus"]
-    print(f"{len(d)} qualified all-rounders "
-          f"(>= {MIN_INNINGS} inns AND >= {MIN_BALLS} balls)\n")
+    q = QUAL.get(fmt, QUAL["test"])
+    print(f"{fmt.upper()}: {len(d)} qualified all-rounders "
+          f"(>= {q[0]} inns, {q[1]} balls, {q[2]} wkts)\n")
     print(d.head(20)[cols].to_string(index=False, float_format=lambda v: f"{v:.1f}"))
     print("\nMOST BALANCED (lowest imbalance, min ALL+ 100)")
     bal = d[d.all_plus >= 100].nsmallest(8, "imbalance")

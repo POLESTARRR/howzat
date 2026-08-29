@@ -666,5 +666,67 @@ class TestRuleChanges(unittest.TestCase):
         json.dumps(T.rule_change_effect(format="odi"))
 
 
+class TestFormatAwareThresholds(unittest.TestCase):
+    """Test-sized workload bars silently produced empty frames and NaNs.
+
+    A T20I bowler delivers 24 balls a match, so a 3000-ball threshold qualified
+    nobody. Every workload bar now scales with the format.
+    """
+
+    def test_bowling_thresholds_scale_down(self):
+        from bowl_plus import MIN_BALLS_BY_FORMAT as M
+
+        self.assertGreater(M["test"], M["odi"])
+        self.assertGreater(M["odi"], M["t20i"])
+
+    def test_allrounder_thresholds_scale_down(self):
+        from allrounder import QUAL
+
+        self.assertGreater(QUAL["test"][1], QUAL["odi"][1])
+        self.assertGreater(QUAL["odi"][1], QUAL["t20i"][1])
+
+    def test_empty_qualification_raises_rather_than_returning_nan(self):
+        from bowl_plus import build
+
+        with self.assertRaises((ValueError, FileNotFoundError)):
+            build("t20i", min_balls=10_000_000)
+
+    def test_every_format_has_every_artifact(self):
+        from cri_plus import PROC
+
+        missing = []
+        for fmt in ("test", "odi", "t20i"):
+            for art in ("cri_plus", "bowl_plus", "peak", "all_plus"):
+                if not (PROC / f"{art}_{fmt}.parquet").exists():
+                    missing.append(f"{art}_{fmt}")
+        self.assertEqual(missing, [], f"missing artifacts: {missing}")
+
+
+class TestPeakAcrossFormats(unittest.TestCase):
+    """Peak windows must land on the right period in every format."""
+
+    KNOWN = {
+        "odi": {"V Kohli": (2015, 2020), "IVA Richards": (1979, 1987)},
+        "test": {"DG Bradman": (1928, 1938), "SPD Smith": (2013, 2019)},
+    }
+
+    def test_known_peaks(self):
+        import pandas as pd
+        from peak import PROC
+
+        for fmt, expect in self.KNOWN.items():
+            path = PROC / f"peak_{fmt}.parquet"
+            if not path.exists():
+                continue
+            d = pd.read_parquet(path).set_index("player")
+            for player, (lo, hi) in expect.items():
+                if player not in d.index:
+                    continue
+                r = d.loc[player]
+                self.assertTrue(lo <= int(r.peak_start) and int(r.peak_end) <= hi + 1,
+                                f"{fmt} {player}: {int(r.peak_start)}-{int(r.peak_end)} "
+                                f"outside {lo}-{hi}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

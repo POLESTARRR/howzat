@@ -36,13 +36,18 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from cri_plus import CriPlusModel, career_table, load_innings
+from cri_plus import CriPlusModel, career_table
 
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 
-WINDOW_YEARS = 4       # a sustained peak, not one hot series
-MIN_WINDOW_INNINGS = 20
+# A peak window must be long enough to be sustained but short enough to be a
+# peak. Limited-overs careers are shorter and denser, so the innings bar scales
+# with the format rather than being one Test-sized number.
+WINDOW_YEARS = 4
+MIN_WINDOW_INNINGS_BY_FORMAT = {"test": 20, "odi": 25, "t20i": 20}
+MIN_WINDOW_INNINGS = MIN_WINDOW_INNINGS_BY_FORMAT["test"]
+MIN_CAREER_INNINGS = {"test": 20, "odi": 25, "t20i": 20}
 
 
 def _skill_mle(runs, censored, offset, ridge, iters: int = 60) -> float:
@@ -65,12 +70,17 @@ def _skill_mle(runs, censored, offset, ridge, iters: int = 60) -> float:
 
 
 def peak_ratings(
+    fmt: str = "test",
     window: int = WINDOW_YEARS,
-    min_window_innings: int = MIN_WINDOW_INNINGS,
+    min_window_innings: int | None = None,
 ) -> pd.DataFrame:
-    df = load_innings()
+    from formats import load_format
+
+    if min_window_innings is None:
+        min_window_innings = MIN_WINDOW_INNINGS_BY_FORMAT.get(fmt, MIN_WINDOW_INNINGS)
+    df = load_format(fmt)
     careers = career_table(df)
-    keep = careers.loc[careers["innings"] >= 20, "player"]
+    keep = careers.loc[careers["innings"] >= MIN_CAREER_INNINGS.get(fmt, 20), "player"]
     sub = df[df["player"].isin(keep)].copy()
 
     model = CriPlusModel().fit_eb(sub)
@@ -119,16 +129,21 @@ def peak_ratings(
     # Otherwise the "peak" is just the career measured with less evidence.
     out["peak_share"] = out["peak_innings"] / out["innings"]
     out["peak_distinct"] = (out["peak_share"] <= 0.80) & (out["peak_lift"] >= 0)
+    out["format"] = fmt
     out = out.sort_values("peak_plus", ascending=False).reset_index(drop=True)
-    out.to_parquet(PROC / "peak_test.parquet", index=False)
+    out.to_parquet(PROC / f"peak_{fmt}.parquet", index=False)
     return out
 
 
 if __name__ == "__main__":
-    out = peak_ratings()
+    import sys
+
+    fmt = sys.argv[1] if len(sys.argv) > 1 else "test"
+    out = peak_ratings(fmt)
     cols = ["player", "country", "innings", "cri_plus", "peak_plus",
             "peak_start", "peak_end", "peak_innings"]
-    print(f"{len(out):,} players with a qualifying {WINDOW_YEARS}-year window\n")
+    print(f"{fmt.upper()}: {len(out):,} players with a qualifying "
+          f"{WINDOW_YEARS}-year window\n")
     print("TOP 15 BY PEAK")
     print(out.head(15)[cols].to_string(index=False, float_format=lambda v: f"{v:.0f}"))
     print("\nBIGGEST PEAK-OVER-CAREER LIFT (min 80 inns)")
