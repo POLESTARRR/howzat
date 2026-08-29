@@ -295,6 +295,42 @@ def bowling_leaderboard(top: int = 20, format: str = "test") -> list[dict] | dic
     return b.nlargest(top, "bowl_plus")[cols].round(2).to_dict("records")
 
 
+@lru_cache(maxsize=1)
+def _rule_changes():
+    path = PROC / "rule_changes.parquet"
+    return pd.read_parquet(path) if path.exists() else None
+
+
+def rule_change_effect(year: int | None = None, format: str | None = None) -> dict:
+    """Measured effect of Law / playing-condition changes on scoring.
+
+    Every figure carries a 95% interval and a permutation p-value. Two
+    estimates are given because they can disagree, and the disagreement is
+    informative: a raw before/after says covering pitches in 1972 did nothing,
+    while against the pre-existing trend it was worth +2.37 runs per dismissal.
+    """
+    d = _rule_changes()
+    if d is None:
+        return {"error": "rule-change analysis not built; run src/rulechange.py"}
+    if format:
+        d = d[d["format"] == format.lower()]
+    if year:
+        d = d[(d.year - int(year)).abs() <= 5]
+    if d.empty:
+        return {"error": "no rule changes matched", "available_years": sorted(
+            _rule_changes().year.unique().tolist())}
+    return {
+        "changes": d.to_dict("records"),
+        "note": (
+            "diff/ci_low/ci_high are the raw before-vs-after change in runs per "
+            "dismissal. its_effect is the departure from the pre-existing trend. "
+            "Cite both when they disagree; significant requires the interval to "
+            "exclude zero AND p<0.05. These are observational, so associations "
+            "rather than proven causes."
+        ),
+    }
+
+
 def leaderboard(top: int = 20, min_innings: int = 40, format: str = "test") -> list[dict]:
     r = _ratings((format or "test").lower())
     key = "bat_plus" if "bat_plus" in r.columns else "cri_plus"
@@ -314,6 +350,7 @@ TOOLS = {
     "leaderboard": leaderboard,
     "get_bowler": get_bowler,
     "bowling_leaderboard": bowling_leaderboard,
+    "rule_change_effect": rule_change_effect,
 }
 
 _STR = {"type": "string"}
@@ -392,6 +429,22 @@ TOOL_SCHEMAS = [
             "properties": {
                 "top": dict(_INT, description="How many, default 20"),
                 "format": dict(_STR, description="Format: test, odi or t20i. Default test."),
+            },
+        },
+    },
+    {
+        "name": "rule_change_effect",
+        "description": (
+            "Measured effect of cricket Law and playing-condition changes on "
+            "scoring, with 95% confidence intervals and permutation p-values. "
+            "Use this whenever a question involves era comparison, whether a "
+            "rule made batting or bowling easier, or why scoring shifted."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "year": dict(_INT, description="Focus on changes near this year"),
+                "format": dict(_STR, description="test, odi or t20i"),
             },
         },
     },

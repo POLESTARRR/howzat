@@ -621,5 +621,50 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertGreater(d.player_id.notna().mean(), 0.99)
 
 
+class TestRuleChanges(unittest.TestCase):
+    """Rule-change effects must always carry an interval, never a bare number."""
+
+    @classmethod
+    def setUpClass(cls):
+        import pandas as pd
+        from rulechange import PROC
+
+        path = PROC / "rule_changes.parquet"
+        if not path.exists():
+            raise unittest.SkipTest("rule-change analysis not built")
+        cls.d = pd.read_parquet(path)
+
+    def test_every_estimate_has_an_interval(self):
+        self.assertTrue((self.d.ci_low <= self.d["diff"]).all())
+        self.assertTrue((self.d["diff"] <= self.d.ci_high).all())
+
+    def test_significance_requires_both_criteria(self):
+        """Interval excluding zero AND p<0.05 — noise must not read as effect."""
+        for _, r in self.d.iterrows():
+            excl = (r.ci_low > 0) or (r.ci_high < 0)
+            self.assertEqual(bool(r.significant), bool(excl and r.p_value < 0.05),
+                             f"{r.change}: significance flag disagrees with its own stats")
+
+    def test_known_effects_are_recovered(self):
+        """Two new balls (2011) and the 2012 circle rule both raised ODI scoring."""
+        for key in ("odi_two_balls", "odi_four_out"):
+            r = self.d[self.d.change == key]
+            if r.empty:
+                continue
+            r = r.iloc[0]
+            self.assertGreater(r["diff"], 0, f"{key} should raise scoring")
+            self.assertTrue(r.significant, f"{key} should be significant")
+
+    def test_both_estimators_are_reported(self):
+        """They can disagree, and the disagreement is the informative part."""
+        have_its = self.d.its_effect.notna()
+        self.assertGreater(have_its.sum(), 0)
+
+    def test_tool_output_is_json_safe(self):
+        import json
+
+        json.dumps(T.rule_change_effect(format="odi"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
