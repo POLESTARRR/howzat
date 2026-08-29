@@ -6,7 +6,7 @@ it is the signal to think.**
 
 ## Big swings (each is a project in itself)
 
-1. **Cricket WAR — wins above replacement.** The natural successor to CRI+.
+1. [DONE 2026-08-30] RAR — runs above replacement (src/war.py). Wins conversion still needs match results.
    Baseball went wRC+ -> WAR; cricket has no equivalent at all. Convert runs and
    wickets into *wins* over a replacement-level player, so a batter and a bowler
    can finally be compared on one axis. Needs a runs-to-wins conversion

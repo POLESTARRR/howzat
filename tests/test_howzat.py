@@ -845,5 +845,56 @@ class TestHomeAdvantage(unittest.TestCase):
                         "home-heavy careers should be adjusted downward")
 
 
+class TestRunsAboveReplacement(unittest.TestCase):
+    """RAR is the only place batting and bowling share a unit."""
+
+    @classmethod
+    def setUpClass(cls):
+        import pandas as pd
+        from war import PROC
+
+        path = PROC / "rar_test.parquet"
+        if not path.exists():
+            raise unittest.SkipTest("RAR not built")
+        cls.d = pd.read_parquet(path).set_index("player")
+
+    def test_bowling_and_batting_are_commensurate(self):
+        """Murali's wickets and Tendulkar's runs should be the same order."""
+        for a, b in [("M Muralidaran", "SR Tendulkar")]:
+            if a in self.d.index and b in self.d.index:
+                x = self.d.loc[a, "bowl_rar"]
+                y = self.d.loc[b, "bat_rar"]
+                self.assertGreater(x, 0)
+                self.assertGreater(y, 0)
+                self.assertLess(max(x, y) / min(x, y), 2.0,
+                                "the two units are not on a comparable scale")
+
+    def test_all_rounders_score_on_both_halves(self):
+        if "JH Kallis" not in self.d.index:
+            self.skipTest("Kallis absent")
+        r = self.d.loc["JH Kallis"]
+        self.assertGreater(r.bat_rar, 5000)
+        self.assertGreater(r.bowl_rar, 500)
+
+    def test_specialist_bowlers_have_negative_batting_rar(self):
+        """A number eleven produces fewer runs than a replacement batter."""
+        for p in ("GD McGrath", "M Muralidaran"):
+            if p in self.d.index:
+                self.assertLess(self.d.loc[p, "bat_rar"], 0)
+
+    def test_total_is_the_sum_of_parts(self):
+        import numpy as np
+
+        diff = (self.d.total_rar - (self.d.bat_rar + self.d.bowl_rar)).abs()
+        self.assertLess(float(np.nanmax(diff)), 1e-6)
+
+    def test_greats_lead_the_table(self):
+        top = set(self.d.nlargest(15, "total_rar").index)
+        hits = sum(p in top for p in
+                   ("M Muralidaran", "JH Kallis", "SR Tendulkar", "SK Warne",
+                    "R Dravid", "RT Ponting"))
+        self.assertGreaterEqual(hits, 5, "RAR top 15 should be uncontroversial")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
