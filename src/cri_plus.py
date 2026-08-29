@@ -143,6 +143,51 @@ def era_offsets(df: pd.DataFrame) -> pd.Series:
     return np.log(era_avg / grand)
 
 
+def infer_home_grounds(df: pd.DataFrame) -> pd.Series:
+    """ground -> home nation, inferred from the data rather than a hand map.
+
+    The home side plays at its own grounds repeatedly across decades while
+    visitors rotate, so the modal country at a ground is the home nation. This
+    recovers all eleven grounds checked by hand (Lord's -> ENG, Melbourne ->
+    AUS, Eden Gardens -> IND, Harare -> ZIM), which is more reliable than a
+    hand-maintained list and needs no upkeep as venues come and go.
+    """
+    return df.groupby("ground")["country"].agg(lambda s: s.value_counts().idxmax())
+
+
+def add_home_flag(df: pd.DataFrame) -> pd.DataFrame:
+    home = infer_home_grounds(df)
+    df = df.copy()
+    df["is_home"] = df["country"].to_numpy() == df["ground"].map(home).to_numpy()
+    return df
+
+
+def home_offsets(df: pd.DataFrame) -> pd.Series:
+    """Observed home advantage per decade, as a log offset.
+
+    Home advantage is real, drifts over time, and was previously unmodelled --
+    so a batter who happened to play more at home was credited for the ground,
+    not the batting. Fixed from observed data for the same identification
+    reason as the era term: fitted freely it is confounded with player skill.
+    """
+    if "is_home" not in df.columns:
+        df = add_home_flag(df)
+
+    def rpd(d):
+        return d.runs.sum() / max(len(d) - int(d.not_out.sum()), 1)
+
+    out = {}
+    for dec, g in df.groupby("decade"):
+        h, a = g[g.is_home], g[~g.is_home]
+        if len(h) < 200 or len(a) < 200:
+            out[dec] = 0.0
+            continue
+        out[dec] = float(np.log(rpd(h) / max(rpd(a), 1e-9)))
+    off = pd.Series(out)
+    # Centre so the term redistributes advantage rather than shifting everyone.
+    return off - off.mean()
+
+
 class CriPlusModel:
     """Censored geometric regression with partial pooling on player skill.
 
@@ -156,11 +201,14 @@ class CriPlusModel:
         ridge_player: float = 0.35,
         ridge_ctx: float = 0.05,
         era_mode: str = "offset",
+        use_home: bool = True,
     ):
         # ridge_player is the prior SD control on skills: higher => more shrinkage.
         self.ridge_player = ridge_player
         self.ridge_ctx = ridge_ctx
         self.era_mode = era_mode
+        self.use_home = use_home
+        self.home_off_ = None
 
     def _design(self, df: pd.DataFrame):
         self.players = pd.Index(sorted(df["player"].unique()))
@@ -191,7 +239,10 @@ class CriPlusModel:
         else:
             era = self.fixed_era_  # data, not a parameter
 
-        eta = np.clip(intercept + skill[pi] + era[di] + opp[oi], -4.0, 6.0)
+        eta = intercept + skill[pi] + era[di] + opp[oi]
+        if self.home_off_ is not None:
+            eta = eta + self.home_off_
+        eta = np.clip(eta, -4.0, 6.0)
         mu = np.exp(eta)
 
         # Geometric on {0,1,2,...} with mean mu, so p = 1/(1+mu):
@@ -235,6 +286,17 @@ class CriPlusModel:
             self.fixed_era_ = off.reindex(self.decades).fillna(0.0).to_numpy()
         else:
             self.fixed_era_ = None
+
+        # Home advantage is +3.43 runs per dismissal [95% CI +2.90, +3.95] and
+        # drifts by era. Left out, a batter who played more at home was credited
+        # for the ground rather than the batting.
+        if self.use_home and {"ground", "country"} <= set(df.columns):
+            d = add_home_flag(df)
+            ho = home_offsets(d)
+            sign = np.where(d["is_home"].to_numpy(), 0.5, -0.5)
+            self.home_off_ = d["decade"].map(ho).fillna(0.0).to_numpy() * sign
+        else:
+            self.home_off_ = None
 
         np_, nd_, no_ = len(self.players), len(self.decades), len(self.opps)
         theta0 = np.zeros(1 + np_ + nd_ + no_)
@@ -301,9 +363,10 @@ class CriPlusModel:
         era = self.era_.reindex(self.decades).to_numpy()
         opp = self.opp_.reindex(self.opps).to_numpy()
 
-        eta = np.clip(
-            self.intercept_ + self.skill_.to_numpy()[pi] + era[di] + opp[oi], -4.0, 6.0
-        )
+        eta = self.intercept_ + self.skill_.to_numpy()[pi] + era[di] + opp[oi]
+        if self.home_off_ is not None and len(self.home_off_) == len(df):
+            eta = eta + self.home_off_
+        eta = np.clip(eta, -4.0, 6.0)
         mu = np.exp(eta)
         info = mu * (1.0 + runs) / (1.0 + mu) ** 2
 

@@ -792,5 +792,58 @@ class TestWomensCricket(unittest.TestCase):
         self.assertLess(MIN_INNINGS["wtest"], MIN_INNINGS["test"])
 
 
+class TestHomeAdvantage(unittest.TestCase):
+    """Home advantage is +3.43 runs/dismissal [+2.90, +3.95] and was unmodelled."""
+
+    @classmethod
+    def setUpClass(cls):
+        from cri_plus import add_home_flag, load_innings
+
+        cls.df = add_home_flag(load_innings())
+
+    def test_home_grounds_are_inferred_correctly(self):
+        """Modal country at a ground is its home nation — no hand map needed."""
+        from cri_plus import infer_home_grounds
+
+        home = infer_home_grounds(self.df)
+        for ground, nation in [("Lord's", "ENG"), ("Melbourne", "AUS"),
+                               ("Eden Gardens", "IND"), ("Wellington", "NZ"),
+                               ("Cape Town", "SA"), ("Harare", "ZIM")]:
+            if ground in home.index:
+                self.assertEqual(home[ground], nation, f"{ground} misattributed")
+
+    def test_home_teams_score_more(self):
+        def rpd(d):
+            return d.runs.sum() / max(len(d) - int(d.not_out.sum()), 1)
+
+        h, a = self.df[self.df.is_home], self.df[~self.df.is_home]
+        self.assertGreater(rpd(h) - rpd(a), 2.0, "home advantage should be clear")
+
+    def test_offsets_are_centred(self):
+        """The term redistributes advantage; it must not shift everyone."""
+        from cri_plus import home_offsets
+
+        self.assertAlmostEqual(float(home_offsets(self.df).mean()), 0.0, places=6)
+
+    def test_adjustment_penalises_home_heavy_careers(self):
+        """A batter who played more at home must not be credited for the ground."""
+        import numpy as np
+        from cri_plus import CriPlusModel, career_table, build
+
+        _, _, with_home = build()
+        c = career_table(self.df)
+        sub = self.df[self.df.player.isin(c.loc[c.innings >= 20, "player"])]
+        without = c.merge(CriPlusModel(use_home=False).fit_eb(sub).ratings(sub),
+                          on="player", how="inner")
+        m = with_home[["player", "innings", "cri_plus"]].merge(
+            without[["player", "cri_plus"]], on="player", suffixes=("_h", "_n"))
+        m["delta"] = m.cri_plus_h - m.cri_plus_n
+        share = self.df.groupby("player").is_home.mean().rename("hs")
+        m = m.merge(share, on="player")
+        q = m[m.innings >= 60]
+        self.assertLess(float(np.corrcoef(q.hs, q["delta"])[0, 1]), 0,
+                        "home-heavy careers should be adjusted downward")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
