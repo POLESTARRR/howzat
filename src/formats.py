@@ -71,13 +71,29 @@ _ABBREV = {
 }
 
 
-def normalise_team(name: str) -> str:
-    """'NZ Women' -> 'New Zealand'. Idempotent for men's names."""
+def _strip_womens_suffix(name: str) -> str:
     n = (name or "").strip()
     for suffix in (" Women", " Wmn", "-W"):
         if n.endswith(suffix):
             n = n[: -len(suffix)].strip()
-    return _ABBREV.get(n, n)
+    return n
+
+
+def normalise_team(name: str) -> str:
+    """'NZ Women' -> 'New Zealand'. Idempotent for men's names.
+
+    Used for the OPPOSITION column, which men's data spells out in full.
+    """
+    return _ABBREV.get(_strip_womens_suffix(name), _strip_womens_suffix(name))
+
+
+def normalise_country(code: str) -> str:
+    """'NZ-W' -> 'NZ'. Country codes stay abbreviated in both games.
+
+    Expanding these too gave women players 'New Zealand' where men had 'NZ',
+    so the same nation rendered two different ways depending on the format.
+    """
+    return _strip_womens_suffix(code)
 
 
 WOMENS_FORMATS = {"wtest", "wodi", "wt20i"}
@@ -98,7 +114,7 @@ def load_format(fmt: str) -> pd.DataFrame:
 
     df = canonicalise(df)
     df["opposition"] = df["opposition"].map(normalise_team)
-    df["country"] = df["country"].map(normalise_team)
+    df["country"] = df["country"].map(normalise_country)
     before = len(df)
     df = df[df["opposition"].isin(FULL_MEMBERS)]
     if before and len(df) < before:

@@ -747,6 +747,28 @@ class TestWomensCricket(unittest.TestCase):
             self.assertEqual(normalise_team(n), n)
             self.assertEqual(normalise_team(normalise_team(n)), n)
 
+    def test_country_codes_stay_abbreviated_in_both_games(self):
+        """Expanding country codes made the same nation render two ways."""
+        from formats import normalise_country
+
+        for raw, want in [("NZ-W", "NZ"), ("SL-W", "SL"), ("ENG-W", "ENG"),
+                          ("AUS", "AUS")]:
+            self.assertEqual(normalise_country(raw), want)
+
+    def test_womens_odi_ratings_match_consensus(self):
+        """Lanning, Rolton, Raj and Clark are not controversial picks."""
+        import pandas as pd
+        from formats import PROC
+
+        path = PROC / "cri_plus_wodi.parquet"
+        if not path.exists():
+            self.skipTest("women's ODI ratings not built")
+        d = pd.read_parquet(path).sort_values("bat_plus", ascending=False)
+        top15 = set(d.head(15).player)
+        for p in ("MM Lanning", "KL Rolton", "M Raj", "BJ Clark", "EA Perry"):
+            self.assertIn(p, top15, f"{p} should rank top-15 in women's ODIs")
+        self.assertEqual(d.iloc[0].player, "MM Lanning")
+
     def test_associates_still_excluded_after_normalising(self):
         from formats import FULL_MEMBERS, normalise_team
 
