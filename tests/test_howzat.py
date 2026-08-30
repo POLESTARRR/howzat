@@ -977,5 +977,51 @@ class TestCareerTotalsSurviveFiltering(unittest.TestCase):
                                  f"{name} total altered by rating scope")
 
 
+class TestWomensFormatsAreFirstClass(unittest.TestCase):
+    """Unregistered formats fall through to the men's default, silently.
+
+    tools.FORMATS listed only the three men's formats, so format="wodi" was
+    coerced to "test" and "Mithali" resolved to Wasim Raja. Same failure shape
+    as serving Test ratings for an ODI question.
+    """
+
+    def test_all_six_formats_registered(self):
+        for f in ("test", "odi", "t20i", "wtest", "wodi", "wt20i"):
+            self.assertIn(f, T.FORMATS)
+
+    def test_womens_lookups_do_not_fall_back_to_mens(self):
+        for q, fmt, want in [("Mithali", "wodi", "M Raj"),
+                             ("Lanning", "wodi", "MM Lanning"),
+                             ("Bakewell", "wtest", "E Bakewell"),
+                             ("Devine", "wt20i", "SFM Devine")]:
+            try:
+                got = T._resolve(q, fmt)
+            except FileNotFoundError:
+                self.skipTest(f"{fmt} ratings not built")
+            self.assertEqual(got, want, f"{q} in {fmt} resolved to {got}")
+
+    def test_get_player_works_for_every_built_format(self):
+        import json
+
+        for fmt in ("test", "odi", "t20i", "wtest", "wodi", "wt20i"):
+            try:
+                p = T.get_player("Kohli" if not fmt.startswith("w") else "Lanning",
+                                 format=fmt)
+            except FileNotFoundError:
+                continue
+            if "error" in p:
+                continue
+            self.assertEqual(p["format"], fmt.upper())
+            json.dumps(p)  # agents receive this as JSON
+
+    def test_by_opposition_is_always_a_frame(self):
+        """groupby.apply returned a Series in some shapes and raised on sort."""
+        p = T.get_player("Bradman", format="test")
+        self.assertIsInstance(p["by_opposition"], list)
+        if p["by_opposition"]:
+            self.assertIn("opposition", p["by_opposition"][0])
+            self.assertIn("average", p["by_opposition"][0])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

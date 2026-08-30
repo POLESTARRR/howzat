@@ -73,6 +73,16 @@ def _bowl_view(path: Path, label: str) -> dict | None:
             "metric": "BOWL+", "rows": rows}
 
 
+def _aliases() -> dict:
+    """Fans type nicknames, not Statsguru's 'initials surname' spelling."""
+    try:
+        from tools import ALIASES
+
+        return dict(ALIASES)
+    except Exception:
+        return {}
+
+
 def _all_innings_count() -> int:
     """Every innings across all formats, batting and bowling."""
     import glob
@@ -151,6 +161,7 @@ def build_payload() -> dict:
             "all_innings": _all_innings_count(),
             "views": len(views),
         },
+        "aliases": _aliases(),
     }
 
 
@@ -184,6 +195,26 @@ h2{font-size:20px;margin:44px 0 6px;letter-spacing:-.015em}
 .note{color:var(--muted);font-size:14px;margin:0 0 18px;max-width:70ch}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .controls{display:flex;gap:10px;flex-wrap:wrap;padding:14px;border-bottom:1px solid var(--line)}
+.settle{margin:26px 0 8px;padding:20px}
+.pickers{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.pick{flex:1;min-width:170px}
+.pick label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);margin-bottom:5px;font-weight:600}
+.pick input{width:100%}
+.vs{color:var(--muted);font-size:13px;padding-bottom:10px}
+.verdict{margin-top:18px}
+.vhead{font-size:19px;font-weight:650;letter-spacing:-.015em;margin:0 0 4px}
+.vsub{color:var(--muted);font-size:13.5px;margin:0 0 14px}
+.vrow{display:flex;gap:14px;flex-wrap:wrap}
+.vcard{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:13px 15px}
+.vcard b{display:block;font-size:15px;margin-bottom:2px}
+.vcard .big{font-size:26px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.vcard small{color:var(--muted);font-size:12px;display:block;margin-top:3px}
+.win{border-color:var(--accent);background:var(--accent-soft)}
+.tie{padding:11px 14px;background:var(--accent-soft);border-radius:9px;
+  color:var(--accent);font-size:13.5px;margin-top:12px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:12px 14px 0}
 .tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);
   padding:6px 13px;border-radius:20px;font:inherit;font-size:13px;cursor:pointer}
@@ -229,12 +260,10 @@ def render(payload: dict) -> str:
 <style>{CSS}</style>
 <div class="wrap">
 <header>
-  <h1>Cricket has no <span class="kbd">wRC+</span></h1>
-  <p class="sub">Baseball fixed cross-era comparison decades ago. Cricket still uses
-  batting average — invented in the 1800s, adjusted for nothing. <b>CRI+</b> and
-  <b>BOWL+</b> rate every player against <b>an average player of the same era and
-  format</b>, so 1930 and 2026 are finally on one scale — across Tests, ODIs and
-  T20Is, men's and women's.</p>
+  <h1>Settle it.</h1>
+  <p class="sub">Pick two players. Get a verdict, the number that decides it, and an
+  honest answer when the data can't separate them. Every comparison is
+  <b>era-adjusted</b>, so 1930 and 2026 are finally on one scale.</p>
   <div class="stats">
     <div class="stat"><b>{m['all_innings']:,}</b><span>innings analysed</span></div>
     <div class="stat"><b>{m['span']}</b><span>every Test ever</span></div>
@@ -242,6 +271,23 @@ def render(payload: dict) -> str:
     <div class="stat"><b>{m['total_players']:,}</b><span>Test players</span></div>
   </div>
 </header>
+
+<div class="panel settle">
+  <div class="pickers">
+    <div class="pick">
+      <label>Player A</label>
+      <input id="pa" placeholder="Bradman" autocomplete="off" list="names">
+    </div>
+    <div class="vs">vs</div>
+    <div class="pick">
+      <label>Player B</label>
+      <input id="pb" placeholder="Tendulkar" autocomplete="off" list="names">
+    </div>
+    <select id="pfmt"></select>
+  </div>
+  <datalist id="names"></datalist>
+  <div id="verdict" class="verdict"></div>
+</div>
 
 <h2>How hard was it to score?</h2>
 <p class="note">Runs per dismissal by decade, across every Test batter. This spans
@@ -388,6 +434,72 @@ document.querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {{
 ['q', 'minInns', 'ctry'].forEach(id =>
   document.getElementById(id).addEventListener('input', draw));
 setView(VIEW);
+
+// ---- the argument settler -------------------------------------------------
+const ALIASES = {json.dumps(payload.get("aliases", {}), separators=(",", ":"))};
+const BATVIEWS = Object.entries(VIEWS).filter(([k, v]) => v.kind === 'bat');
+const pf = document.getElementById('pfmt');
+BATVIEWS.forEach(([k, v]) => {{
+  const o = document.createElement('option'); o.value = k; o.textContent = v.label;
+  pf.appendChild(o);
+}});
+
+function findPlayer(q, key) {{
+  const rows = VIEWS[key].rows;
+  let s = q.trim().toLowerCase();
+  if (!s) return null;
+  if (ALIASES[s]) s = ALIASES[s].toLowerCase();
+  return rows.find(p => p.n.toLowerCase() === s)
+      || rows.find(p => p.n.toLowerCase().split(/[^a-z]+/).includes(s))
+      || rows.find(p => p.n.toLowerCase().includes(s)) || null;
+}}
+
+function card(p, won) {{
+  return `<div class="vcard ${{won ? 'win' : ''}}">
+    <b>${{p.n}} <span class="ctry">${{p.c}}</span></b>
+    <div class="big">${{p.p.toFixed(0)}}</div>
+    <small>95% interval ${{p.lo.toFixed(0)}}–${{p.hi.toFixed(0)}} ·
+    ${{p.i}} inns · avg ${{p.a.toFixed(1)}} · rank #${{p.r}}</small>
+  </div>`;
+}}
+
+function settle() {{
+  const key = pf.value || BATVIEWS[0][0];
+  const a = findPlayer(document.getElementById('pa').value, key);
+  const b = findPlayer(document.getElementById('pb').value, key);
+  const out = document.getElementById('verdict');
+  if (!a || !b) {{ out.innerHTML = ''; return; }}
+  if (a.n === b.n) {{ out.innerHTML = '<p class="vsub">Pick two different players.</p>'; return; }}
+
+  const [hi, lo] = a.p >= b.p ? [a, b] : [b, a];
+  // The whole point: only call a winner when the intervals do not overlap.
+  const separated = hi.lo > lo.hi;
+  const head = separated
+    ? `${{hi.n}} — and it is not close.`
+    : `Too close to call.`;
+  const sub = separated
+    ? `${{hi.n}}'s 95% interval (${{hi.lo.toFixed(0)}}–${{hi.hi.toFixed(0)}}) clears
+       ${{lo.n}}'s entirely (${{lo.lo.toFixed(0)}}–${{lo.hi.toFixed(0)}}), so the gap is real.`
+    : `Their 95% intervals overlap, so this data cannot separate them.
+       ${{hi.n}} rates higher, but not by enough to be sure.`;
+  out.innerHTML = `<p class="vhead">${{head}}</p><p class="vsub">${{sub}}</p>
+    <div class="vrow">${{card(hi, separated)}}${{card(lo, false)}}</div>` +
+    (separated ? '' : `<div class="tie">Saying "I don't know" is a result.
+       An overlap means the evidence is genuinely inconclusive.</div>`);
+}}
+
+function refreshNames() {{
+  const key = pf.value || BATVIEWS[0][0];
+  document.getElementById('names').innerHTML =
+    VIEWS[key].rows.slice(0, 400).map(p => `<option value="${{p.n}}">`).join('');
+}}
+
+['pa', 'pb'].forEach(id => document.getElementById(id).addEventListener('input', settle));
+pf.addEventListener('change', () => {{ refreshNames(); settle(); }});
+refreshNames();
+document.getElementById('pa').value = 'Bradman';
+document.getElementById('pb').value = 'Tendulkar';
+settle();
 </script>"""
 
 

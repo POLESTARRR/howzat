@@ -19,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 
 
-FORMATS = ("test", "odi", "t20i")
+# Women's formats must be listed here. Without them, format="wodi" fell through
+# to the men's Test default and "Mithali" resolved to Wasim Raja -- the same
+# silent wrong-format failure that once served Test ratings for ODI questions.
+FORMATS = ("test", "odi", "t20i", "wtest", "wodi", "wt20i")
 
 
 @lru_cache(maxsize=8)
@@ -83,6 +86,21 @@ ALIASES = {
     "gooch": "GA Gooch", "border": "AR Border", "waugh": "SR Waugh",
     "sehwag": "Sehwag", "virender": "Sehwag", "rohit": "RG Sharma",
     "cheteshwar": "Pujara", "pujara": "Pujara", "babar": "Babar Azam",
+    # Women's cricket. The table had none, so "Mithali" resolved to nothing.
+    "mithali": "M Raj", "mithali raj": "M Raj",
+    "meg": "MM Lanning", "meg lanning": "MM Lanning", "lanning": "MM Lanning",
+    "ellyse": "EA Perry", "ellyse perry": "EA Perry", "perry": "EA Perry",
+    "smriti": "S Mandhana", "mandhana": "S Mandhana",
+    "alyssa": "AJ Healy", "healy": "AJ Healy",
+    "belinda": "BJ Clark", "belinda clark": "BJ Clark",
+    "sophie devine": "SFM Devine", "devine": "SFM Devine",
+    "ecclestone": "S Ecclestone", "sophie ecclestone": "S Ecclestone",
+    "fitzpatrick": "CL Fitzpatrick", "cathryn": "CL Fitzpatrick",
+    "harmanpreet": "H Kaur", "shafali": "Shafali Verma",
+    "bakewell": "E Bakewell", "enid": "E Bakewell",
+    "charlotte": "CM Edwards", "charlotte edwards": "CM Edwards",
+    "suzie": "SW Bates", "bates": "SW Bates",
+    "stafanie": "SR Taylor", "beth mooney": "BL Mooney", "mooney": "BL Mooney",
 }
 
 
@@ -147,20 +165,18 @@ def get_player(name: str, format: str = "test") -> dict:
     ii = _innings(fmt)
     inn = ii[ii.player == key]
 
-    by_opp = (
-        inn.groupby("opposition")
-        .apply(
-            lambda g: pd.Series(
-                {
-                    "innings": len(g),
-                    "runs": int(g.runs.sum()),
-                    "average": round(g.runs.sum() / max(len(g) - g.not_out.sum(), 1), 2),
-                }
-            ),
-            include_groups=False,
-        )
-        .sort_values("innings", ascending=False)
-    )
+    # groupby.apply can hand back a Series rather than a frame depending on the
+    # shape, which then makes sort_values("innings") raise. agg is unambiguous.
+    g = inn.groupby("opposition")
+    by_opp = pd.DataFrame({
+        "innings": g.size(),
+        "runs": g.runs.sum().astype(int),
+        "not_outs": g.not_out.sum().astype(int),
+    })
+    by_opp["average"] = (
+        by_opp.runs / (by_opp.innings - by_opp.not_outs).clip(lower=1)
+    ).round(2)
+    by_opp = by_opp.drop(columns=["not_outs"]).sort_values("innings", ascending=False)
 
     main = float(row["bat_plus"]) if "bat_plus" in r.columns else float(row.cri_plus)
     mname = "bat_plus" if "bat_plus" in r.columns else "cri_plus"
