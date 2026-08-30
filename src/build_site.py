@@ -41,7 +41,14 @@ def _bat_view(path: Path, label: str) -> dict | None:
             "y": f"{int(row.first_year)}\u2013{int(row.last_year)}",
             "m": int(row["move"]),
         })
-    return {"label": label, "kind": "bat",
+    # A fixed 40-innings default blanked the women's Test tab entirely, whose
+    # careers run 8-24 innings. Each view picks a floor its own data supports.
+    # Default to a floor that keeps most of the field visible: the 25th
+    # percentile of career lengths, capped at 40. A fixed 40 blanked the
+    # women's Test tab, whose careers run 8-24 innings.
+    inns = sorted(r["i"] for r in rows) or [0]
+    floor = inns[max(len(inns) // 4 - 1, 0)]
+    return {"label": label, "kind": "bat", "min_default": int(min(floor, 40)),
             "metric": "BAT+" if main == "bat_plus" else "CRI+", "rows": rows}
 
 
@@ -62,7 +69,22 @@ def _bowl_view(path: Path, label: str) -> dict | None:
         "y": f"{int(x.first_year)}\u2013{int(x.last_year)}",
         "m": int(x["move"]),
     } for _, x in b.iterrows()]
-    return {"label": label, "kind": "bowl", "metric": "BOWL+", "rows": rows}
+    return {"label": label, "kind": "bowl", "min_default": 0,
+            "metric": "BOWL+", "rows": rows}
+
+
+def _all_innings_count() -> int:
+    """Every innings across all formats, batting and bowling."""
+    import glob
+
+    total = 0
+    for f in glob.glob(str(PROC / "*_innings.parquet")) + \
+             glob.glob(str(PROC / "*_bowling.parquet")):
+        try:
+            total += len(pd.read_parquet(f, columns=["year"]))
+        except Exception:
+            pass
+    return total
 
 
 def build_payload() -> dict:
@@ -95,7 +117,7 @@ def build_payload() -> dict:
     eras = [{"d": int(d), "avg": float(v), "n": int(g.size()[d])} for d, v in era.items()]
 
     views = {"test_bat": {"label": "Test batting", "kind": "bat",
-                          "metric": "CRI+", "rows": players}}
+                          "min_default": 40, "metric": "CRI+", "rows": players}}
     for key, path, label in [
         ("odi_bat", PROC / "cri_plus_odi.parquet", "ODI batting"),
         ("t20_bat", PROC / "cri_plus_t20i.parquet", "T20I batting"),
@@ -126,6 +148,8 @@ def build_payload() -> dict:
             "span": f"{int(inn.year.min())}–{int(inn.year.max())}",
             "rated": int(len(r)),
             "total_players": int(inn.player.nunique()),
+            "all_innings": _all_innings_count(),
+            "views": len(views),
         },
     }
 
@@ -207,14 +231,15 @@ def render(payload: dict) -> str:
 <header>
   <h1>Cricket has no <span class="kbd">wRC+</span></h1>
   <p class="sub">Baseball fixed cross-era comparison decades ago. Cricket still uses
-  batting average — invented in the 1800s, adjusted for nothing. <b>CRI+</b> is an
-  era-adjusted Test batting rating where <b>100 = an average batter of the same era</b>,
-  so 1930 and 2026 are finally on one scale.</p>
+  batting average — invented in the 1800s, adjusted for nothing. <b>CRI+</b> and
+  <b>BOWL+</b> rate every player against <b>an average player of the same era and
+  format</b>, so 1930 and 2026 are finally on one scale — across Tests, ODIs and
+  T20Is, men's and women's.</p>
   <div class="stats">
-    <div class="stat"><b>{m['innings']:,}</b><span>Test innings</span></div>
+    <div class="stat"><b>{m['all_innings']:,}</b><span>innings analysed</span></div>
     <div class="stat"><b>{m['span']}</b><span>every Test ever</span></div>
-    <div class="stat"><b>{m['total_players']:,}</b><span>players</span></div>
-    <div class="stat"><b>{m['rated']:,}</b><span>rated (20+ inns)</span></div>
+    <div class="stat"><b>{m['views']}</b><span>rating tables</span></div>
+    <div class="stat"><b>{m['total_players']:,}</b><span>Test players</span></div>
   </div>
 </header>
 
@@ -232,6 +257,8 @@ positive means the era adjustment promoted them. Click any column to sort.</p>
   <div class="controls">
     <input id="q" placeholder="Search a player…" autocomplete="off">
     <select id="minInns">
+      <option value="5">5+ innings</option>
+      <option value="10">10+ innings</option>
       <option value="20">20+ innings</option>
       <option value="40" selected>40+ innings</option>
       <option value="80">80+ innings</option>
@@ -296,6 +323,14 @@ function setView(k) {{
   document.getElementById('hMain').textContent = VIEWS[k].metric || 'CRI+';
   document.getElementById('hCi').textContent  = '95% interval';
   document.getElementById('minInns').style.display = bowl ? 'none' : '';
+  const sel2 = document.getElementById('minInns');
+  const want = VIEWS[k].min_default;
+  if (want !== undefined && !bowl) {{
+    const opts = [...sel2.options].map(o => +o.value);
+    let best = opts[0];
+    for (const o of opts) if (o <= want) best = o;
+    sel2.value = String(best);
+  }}
   sel.innerHTML = '<option value="">All countries</option>';
   [...new Set(DATA.map(p => p.c))].sort().forEach(c => {{
     const o = document.createElement('option'); o.value = o.textContent = c; sel.appendChild(o);

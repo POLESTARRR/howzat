@@ -132,7 +132,10 @@ def cmd_top(a) -> None:
                 f"{r['average']:>7.1f}")
         if has_sr:
             sr = r.get("sr_plus")
-            line += f"{sr:>7.0f}" if sr is not None else f"{'·':>7}"
+            # Balls faced is not recorded before the 1990s, so SR+ is genuinely
+            # absent for older players rather than zero.
+            ok = sr is not None and sr == sr
+            line += f"{sr:>7.0f}" if ok else f"{'·':>7}"
         print(line + f"{r[key]:>8.0f}")
 
 
