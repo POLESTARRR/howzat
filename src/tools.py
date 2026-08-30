@@ -25,6 +25,19 @@ PROC = ROOT / "data" / "processed"
 FORMATS = ("test", "odi", "t20i", "wtest", "wodi", "wt20i")
 
 
+def _check_fmt(fmt: str | None) -> str:
+    """Validate a format instead of quietly substituting the default.
+
+    Coercing an unknown format to "test" is how format='wodi' ended up serving
+    men's Test ratings and resolving 'Mithali' to Wasim Raja. An unknown format
+    is a caller error and should say so.
+    """
+    f = (fmt or "test").lower()
+    if f not in FORMATS:
+        raise ValueError(f"unknown format {fmt!r}; expected one of {list(FORMATS)}")
+    return f
+
+
 @lru_cache(maxsize=8)
 def _ratings(fmt: str = "test") -> pd.DataFrame:
     """Ratings for one format.
@@ -33,9 +46,7 @@ def _ratings(fmt: str = "test") -> pd.DataFrame:
     argued about Viv Richards' ODI standing using his Test numbers, and the
     Skeptic caught it. Every lookup now takes an explicit format.
     """
-    fmt = (fmt or "test").lower()
-    if fmt not in FORMATS:
-        fmt = "test"
+    fmt = _check_fmt(fmt)
     for name in (f"cri_plus_{fmt}.parquet", "cri_plus.parquet" if fmt == "test" else ""):
         if name and (PROC / name).exists():
             return pd.read_parquet(PROC / name)
@@ -51,9 +62,7 @@ def _innings(fmt: str = "test") -> pd.DataFrame:
     would then reason about an era baseline that does not correspond to the
     numbers it is comparing.
     """
-    fmt = (fmt or "test").lower()
-    if fmt not in FORMATS:
-        fmt = "test"
+    fmt = _check_fmt(fmt)
     df = pd.read_parquet(PROC / f"{fmt}_innings.parquet")
     from formats import FULL_MEMBERS
 
@@ -63,9 +72,7 @@ def _innings(fmt: str = "test") -> pd.DataFrame:
 @lru_cache(maxsize=8)
 def _bowling(fmt: str = "test") -> pd.DataFrame | None:
     """Bowling ratings for one format, or None if not built yet."""
-    fmt = (fmt or "test").lower()
-    if fmt not in FORMATS:
-        fmt = "test"
+    fmt = _check_fmt(fmt)
     path = PROC / f"bowl_plus_{fmt}.parquet"
     return pd.read_parquet(path) if path.exists() else None
 
@@ -152,7 +159,10 @@ def search_players(query: str, limit: int = 8, format: str = "test") -> list[dic
 
 def get_player(name: str, format: str = "test") -> dict:
     """Career record and rating for one batter, in the given format."""
-    fmt = (format or "test").lower()
+    try:
+        fmt = _check_fmt(format)
+    except ValueError as e:
+        return {"error": str(e)}
     key = _resolve(name, fmt)
     if key is None:
         return {
@@ -209,7 +219,12 @@ def get_player(name: str, format: str = "test") -> dict:
 
 def compare(names: list[str], format: str = "test") -> dict:
     """Side-by-side comparison, the core call for a GOAT argument."""
-    fmt = (format or "test").lower()
+    try:
+        fmt = _check_fmt(format)
+    except ValueError as e:
+        return {"error": str(e)}
+    if len(set(n.strip().lower() for n in names)) < 2:
+        return {"error": "compare needs two different players"}
     players = [get_player(n, format=fmt) for n in names]
     ok = [p for p in players if "error" not in p]
     # Keep the payload compact: the per-opposition breakdown is large and is
@@ -245,7 +260,10 @@ def compare(names: list[str], format: str = "test") -> dict:
 
 def era_context(decade: int, format: str = "test") -> dict:
     """How hard was scoring in a given decade, in a given format?"""
-    inn = _innings((format or "test").lower())
+    try:
+        inn = _innings(_check_fmt(format))
+    except (ValueError, FileNotFoundError) as e:
+        return {"error": str(e)}
     d = inn[inn.year // 10 * 10 == decade]
     if d.empty:
         return {"error": f"no innings in {decade}s"}
@@ -262,7 +280,10 @@ def era_context(decade: int, format: str = "test") -> dict:
 
 def get_bowler(name: str, format: str = "test") -> dict:
     """Career bowling record and BOWL+ rating, in the given format."""
-    fmt = (format or "test").lower()
+    try:
+        fmt = _check_fmt(format)
+    except ValueError as e:
+        return {"error": str(e)}
     b = _bowling(fmt)
     if b is None:
         return {
@@ -303,7 +324,10 @@ def get_bowler(name: str, format: str = "test") -> dict:
 
 
 def bowling_leaderboard(top: int = 20, format: str = "test") -> list[dict] | dict:
-    fmt = (format or "test").lower()
+    try:
+        fmt = _check_fmt(format)
+    except ValueError as e:
+        return {"error": str(e)}
     b = _bowling(fmt)
     if b is None:
         return {"error": f"{fmt.upper()} bowling ratings not built yet"}
@@ -347,8 +371,11 @@ def rule_change_effect(year: int | None = None, format: str | None = None) -> di
     }
 
 
-def leaderboard(top: int = 20, min_innings: int = 40, format: str = "test") -> list[dict]:
-    r = _ratings((format or "test").lower())
+def leaderboard(top: int = 20, min_innings: int = 40, format: str = "test") -> list[dict] | dict:
+    try:
+        r = _ratings(_check_fmt(format))
+    except (ValueError, FileNotFoundError) as e:
+        return {"error": str(e)}
     key = "bat_plus" if "bat_plus" in r.columns else "cri_plus"
     r = r[r.innings >= min_innings].nlargest(top, key)
     cols = ["player", "country", "innings", "average", "cri_plus", "sr_plus",

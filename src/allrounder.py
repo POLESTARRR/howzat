@@ -37,6 +37,10 @@ QUAL = {
     "test": (30,   3000,  75,   85),
     "odi":  (40,   1500,  50,   60),
     "t20i": (30,   600,   25,   30),
+    # Women's cricket is played far less; bars scale to the volume available.
+    "wtest": (8,    600,   20,   90),
+    "wodi": (25,   1000,   30,   70),
+    "wt20i": (20,   400,   15,   35),
 }
 MIN_INNINGS, MIN_BALLS, MIN_WICKETS, MAX_BALLS_PER_WICKET = QUAL["test"]
 

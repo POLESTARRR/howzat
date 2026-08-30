@@ -208,13 +208,13 @@ def main() -> None:
 
     p = sub.add_parser("player", help="look up a batter")
     p.add_argument("name", nargs="+")
-    p.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i"))
+    p.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i", "wtest", "wodi", "wt20i"))
     p.set_defaults(fn=cmd_player)
 
     t = sub.add_parser("top", help="leaderboard")
     t.add_argument("--n", type=int, default=20)
     t.add_argument("--min-innings", type=int, default=40)
-    t.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i"))
+    t.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i", "wtest", "wodi", "wt20i"))
     t.set_defaults(fn=cmd_top)
 
     k = sub.add_parser("ask", help="run a debate")
@@ -225,12 +225,12 @@ def main() -> None:
 
     bw = sub.add_parser("bowler", help="look up a bowler")
     bw.add_argument("name", nargs="+")
-    bw.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i"))
+    bw.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i", "wtest", "wodi", "wt20i"))
     bw.set_defaults(fn=cmd_bowler)
 
     bl = sub.add_parser("bowlers", help="bowling leaderboard")
     bl.add_argument("--n", type=int, default=20)
-    bl.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i"))
+    bl.add_argument("-f", "--format", default="test", choices=("test", "odi", "t20i", "wtest", "wodi", "wt20i"))
     bl.set_defaults(fn=cmd_bowlers)
 
     bd = sub.add_parser("build", help="rebuild all ratings + site")

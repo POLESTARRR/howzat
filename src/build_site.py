@@ -35,8 +35,11 @@ def _bat_view(path: Path, label: str) -> dict | None:
             "r": int(row["rank"]), "n": row.player, "c": row.country,
             "i": int(row.innings), "a": round(float(row.average), 2),
             "p": round(float(row[main]), 1),
-            "lo": round(float(row.get("cri_lo", row[main])), 1),
-            "hi": round(float(row.get("cri_hi", row[main])), 1),
+            # Show the interval that belongs to the metric on screen.
+            "lo": round(float(row.get("bat_lo" if main == "bat_plus" else "cri_lo",
+                                      row[main])), 1),
+            "hi": round(float(row.get("bat_hi" if main == "bat_plus" else "cri_hi",
+                                      row[main])), 1),
             "sr": None if sr is None or pd.isna(sr) else round(float(sr), 1),
             "y": f"{int(row.first_year)}\u2013{int(row.last_year)}",
             "m": int(row["move"]),
@@ -405,11 +408,21 @@ function draw() {{
                               (!q || p.n.toLowerCase().includes(q)));
   rows.sort((a, b) => {{
     const x = a[sortK], y = b[sortK];
-    const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+    let c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+    // Lower is better for a bowling average and economy, so descending on
+    // those columns must mean "best first", not "biggest number first".
+    if (bowl && (sortK === 'a' || sortK === 'sr')) c = -c;
     return sortAsc ? c : -c;
   }});
 
-  document.getElementById('rows').innerHTML = rows.slice(0, 300).map(p => {{
+  const body = document.getElementById('rows');
+  if (!rows.length) {{
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:26px;
+      color:var(--muted)">No players match those filters in
+      ${{VIEWS[VIEW].label}}. Clear the search or lower the innings filter.</td></tr>`;
+    return;
+  }}
+  body.innerHTML = rows.slice(0, 300).map(p => {{
     const l = scale(p.lo), w = Math.max(scale(p.hi) - l, 1.2), c = scale(p.p);
     const pt = Math.min(Math.max((c - l) / w * 100, 0), 100);
     const mv = p.m > 0 ? `<span class="up">+${{p.m}}</span>`
@@ -468,7 +481,17 @@ function settle() {{
   const a = findPlayer(document.getElementById('pa').value, key);
   const b = findPlayer(document.getElementById('pb').value, key);
   const out = document.getElementById('verdict');
-  if (!a || !b) {{ out.innerHTML = ''; return; }}
+  const qa = document.getElementById('pa').value.trim();
+  const qb = document.getElementById('pb').value.trim();
+  if (!qa || !qb) {{ out.innerHTML = ''; return; }}
+  // Saying nothing when a name does not resolve reads as a broken page.
+  const missing = [!a && qa, !b && qb].filter(Boolean);
+  if (missing.length) {{
+    out.innerHTML = `<p class="vsub">No ${{VIEWS[key].label}} player matching
+      <b>${{missing.map(m => m.replace(/[<>]/g, '')).join('</b> or <b>')}}</b>.
+      Try a surname, or pick from the suggestions.</p>`;
+    return;
+  }}
   if (a.n === b.n) {{ out.innerHTML = '<p class="vsub">Pick two different players.</p>'; return; }}
 
   const [hi, lo] = a.p >= b.p ? [a, b] : [b, a];

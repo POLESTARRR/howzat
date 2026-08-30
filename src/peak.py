@@ -45,9 +45,15 @@ PROC = ROOT / "data" / "processed"
 # peak. Limited-overs careers are shorter and denser, so the innings bar scales
 # with the format rather than being one Test-sized number.
 WINDOW_YEARS = 4
-MIN_WINDOW_INNINGS_BY_FORMAT = {"test": 20, "odi": 25, "t20i": 20}
+MIN_WINDOW_INNINGS_BY_FORMAT = {
+    "test": 20, "odi": 25, "t20i": 20,
+    "wtest": 6, "wodi": 20, "wt20i": 15,
+}
 MIN_WINDOW_INNINGS = MIN_WINDOW_INNINGS_BY_FORMAT["test"]
-MIN_CAREER_INNINGS = {"test": 20, "odi": 25, "t20i": 20}
+MIN_CAREER_INNINGS = {
+    "test": 20, "odi": 25, "t20i": 20,
+    "wtest": 8, "wodi": 25, "wt20i": 20,
+}
 
 
 def _skill_mle(runs, censored, offset, ridge, iters: int = 60) -> float:

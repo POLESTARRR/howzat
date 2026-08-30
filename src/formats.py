@@ -197,6 +197,7 @@ def rate_format(fmt: str) -> pd.DataFrame:
     wd, wt = WEIGHTS[fmt]
     if wt == 0:
         out["bat_plus"] = out["cri_plus"]
+        out["bat_lo"], out["bat_hi"] = out.get("cri_lo"), out.get("cri_hi")
     else:
         # Weighted geometric mean; falls back to CRI+ where SR+ is unavailable.
         sr = out["sr_plus"]
@@ -206,6 +207,24 @@ def rate_format(fmt: str) -> pd.DataFrame:
             out["cri_plus"],
         )
 
+        # The interval must belong to the number actually displayed. Showing
+        # CRI+'s interval next to a BAT+ point estimate put 27 ODI ratings
+        # outside their own bars.
+        #
+        # BAT+ is a weighted geometric mean, so in logs it is a weighted sum:
+        #   log BAT+ = wd*log CRI+ + wt*log SR+
+        # and the variances add in the same weights (squared).
+        cri = out["cri_plus"].clip(lower=1)
+        lo, hi = out.get("cri_lo"), out.get("cri_hi")
+        # Recover se(log CRI+) from the interval that produced it.
+        se_cri = (np.log(hi.clip(lower=1)) - np.log(lo.clip(lower=1))) / (2 * 1.96)
+        # SR+ is a runs-per-expected-runs ratio, so its log SE goes as 1/sqrt(runs).
+        se_sr = 1.0 / np.sqrt(out["runs"].clip(lower=1))
+        se_bat = np.sqrt((wd * se_cri) ** 2 + (wt * se_sr) ** 2)
+        bat = pd.Series(out["bat_plus"]).clip(lower=1)
+        out["bat_lo"] = bat * np.exp(-1.96 * se_bat)
+        out["bat_hi"] = bat * np.exp(1.96 * se_bat)
+
     out["format"] = fmt
     out = out.sort_values("bat_plus", ascending=False).reset_index(drop=True)
     dest = PROC / f"cri_plus_{fmt}.parquet"
@@ -213,9 +232,14 @@ def rate_format(fmt: str) -> pd.DataFrame:
     return out
 
 
+# Every format the project rates. Leaving the women's formats out of this loop
+# quietly excluded them from the combined table.
+ALL_FORMATS = ("test", "odi", "t20i", "wtest", "wodi", "wt20i")
+
+
 def main() -> None:
     frames = []
-    for fmt in ("test", "odi", "t20i"):
+    for fmt in ALL_FORMATS:
         try:
             out = rate_format(fmt)
         except FileNotFoundError as e:

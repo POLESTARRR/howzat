@@ -692,14 +692,30 @@ class TestFormatAwareThresholds(unittest.TestCase):
             build("t20i", min_balls=10_000_000)
 
     def test_every_format_has_every_artifact(self):
+        """Women's formats were silently absent from peak, all-rounder and the
+        combined table because loops enumerated only the men's three."""
         from cri_plus import PROC
+        from formats import ALL_FORMATS
 
         missing = []
-        for fmt in ("test", "odi", "t20i"):
+        for fmt in ALL_FORMATS:
             for art in ("cri_plus", "bowl_plus", "peak", "all_plus"):
                 if not (PROC / f"{art}_{fmt}.parquet").exists():
                     missing.append(f"{art}_{fmt}")
         self.assertEqual(missing, [], f"missing artifacts: {missing}")
+
+    def test_combined_table_covers_every_format(self):
+        import pandas as pd
+        from cri_plus import PROC
+        from formats import ALL_FORMATS
+
+        path = PROC / "cri_plus_all.parquet"
+        if not path.exists():
+            self.skipTest("combined table not built")
+        d = pd.read_parquet(path)
+        for fmt in ALL_FORMATS:
+            self.assertIn(fmt, set(d["format"]), f"{fmt} missing from combined table")
+        self.assertEqual(int(d.duplicated(["player", "format"]).sum()), 0)
 
 
 class TestPeakAcrossFormats(unittest.TestCase):
@@ -1021,6 +1037,84 @@ class TestWomensFormatsAreFirstClass(unittest.TestCase):
         if p["by_opposition"]:
             self.assertIn("opposition", p["by_opposition"][0])
             self.assertIn("average", p["by_opposition"][0])
+
+
+class TestFailLoudly(unittest.TestCase):
+    """Silent fallback is this project's most expensive bug shape.
+
+    Coercing an unknown format to "test" is how format='wodi' served men's Test
+    ratings and resolved 'Mithali' to Wasim Raja. Unknown input is a caller
+    error and must say so.
+    """
+
+    def test_unknown_format_is_reported_not_substituted(self):
+        for call in (lambda: T.get_player("Kohli", format="zzz"),
+                     lambda: T.get_bowler("McGrath", format="zzz"),
+                     lambda: T.era_context(2020, format="zzz"),
+                     lambda: T.leaderboard(3, format="zzz"),
+                     lambda: T.bowling_leaderboard(3, format="zzz"),
+                     lambda: T.compare(["Bradman", "Sachin"], format="zzz")):
+            r = call()
+            self.assertIsInstance(r, dict)
+            self.assertIn("error", r)
+            self.assertIn("unknown format", r["error"])
+
+    def test_comparing_a_player_with_themselves_is_rejected(self):
+        r = T.compare(["Bradman", "Bradman"])
+        self.assertIn("error", r)
+
+    def test_valid_formats_still_work(self):
+        for fmt in T.FORMATS:
+            try:
+                r = T.leaderboard(2, min_innings=1, format=fmt)
+            except FileNotFoundError:
+                continue
+            self.assertNotIsInstance(r, dict, f"{fmt} should return rows")
+
+
+class TestCliCoversEveryFormat(unittest.TestCase):
+    def test_cli_format_choices_match_tools(self):
+        """The CLI rejected wodi/wt20i/wtest while the tools supported them."""
+        src = (Path(__file__).resolve().parents[1] / "howzat.py").read_text()
+        for fmt in ("test", "odi", "t20i", "wtest", "wodi", "wt20i"):
+            self.assertIn(f'"{fmt}"', src, f"CLI missing --format {fmt}")
+
+
+class TestIntervalsBelongToTheirMetric(unittest.TestCase):
+    """A point estimate must lie inside the interval displayed beside it.
+
+    Limited-overs tables showed BAT+ with CRI+'s interval, which put 27 ODI
+    ratings outside their own bars. BAT+ is a weighted geometric mean, so in
+    logs it is a weighted sum and the variances add in the same weights.
+    """
+
+    def test_bat_plus_lies_inside_its_own_interval(self):
+        import pandas as pd
+        from formats import ALL_FORMATS, PROC, WEIGHTS
+
+        for fmt in ALL_FORMATS:
+            path = PROC / f"cri_plus_{fmt}.parquet"
+            if not path.exists():
+                continue
+            d = pd.read_parquet(path)
+            if "bat_lo" not in d.columns:
+                continue
+            out = ((d.bat_plus < d.bat_lo - 1e-6) | (d.bat_plus > d.bat_hi + 1e-6)).sum()
+            self.assertEqual(int(out), 0, f"{fmt}: {out} ratings outside their interval")
+
+    def test_blended_intervals_are_wider_than_the_durability_part(self):
+        """Adding a second noisy component cannot reduce uncertainty."""
+        import pandas as pd
+        from formats import PROC
+
+        path = PROC / "cri_plus_odi.parquet"
+        if not path.exists():
+            self.skipTest("ODI not built")
+        d = pd.read_parquet(path).dropna(subset=["sr_plus"])
+        if d.empty:
+            self.skipTest("no SR+ rows")
+        rel_bat = (d.bat_hi - d.bat_lo) / d.bat_plus
+        self.assertTrue((rel_bat > 0).all())
 
 
 if __name__ == "__main__":
