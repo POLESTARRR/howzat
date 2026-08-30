@@ -41,6 +41,11 @@ MIN_BALLS_BY_FORMAT = {
     "test": 3000,   # ~500 overs
     "odi": 1500,    # ~250 overs
     "t20i": 600,    # ~100 overs, i.e. ~25 matches
+    # Women's cricket is played far less, so the same bars would qualify almost
+    # nobody. Scaled to the volume actually available.
+    "wtest": 1000,
+    "wodi": 1000,
+    "wt20i": 400,
 }
 MIN_BALLS = MIN_BALLS_BY_FORMAT["test"]
 
@@ -57,7 +62,15 @@ def load_bowling(fmt: str = "test") -> pd.DataFrame:
     df = df[df["balls"] > 0]
     df["decade"] = (df["year"] // 10 * 10).astype(int)
     from cri_plus import canonicalise
+    from formats import FULL_MEMBERS, normalise_country, normalise_team
 
+    # Same normalisation and Full Member scoping as the batting side, or the
+    # two halves of the project disagree about what a team is called.
+    df["opposition"] = df["opposition"].map(normalise_team)
+    df["country"] = df["country"].map(normalise_country)
+    # NOTE: no Full Member filter here. Career totals must match the published
+    # record exactly, and filtering at load turned Warne's 708 wickets into 702.
+    # The filter belongs on the model's fitting subset only -- see build().
     return canonicalise(df)
 
 
@@ -97,6 +110,7 @@ class BowlPlusModel:
     def __init__(self, ridge: float = 1.0, ridge_ctx: float = 0.05):
         self.ridge = ridge
         self.ridge_ctx = ridge_ctx
+        self.signal_ratio_ = None
 
     def _design(self, df: pd.DataFrame):
         self.bowlers = pd.Index(sorted(df["player"].unique()))
@@ -191,18 +205,24 @@ class BowlPlusModel:
         self.opp_r_ = pd.Series(orr - orr.mean(), index=self.opps)
         return self
 
-    def fit_eb(self, df: pd.DataFrame, iters: int = 10, tol: float = 1e-3):
-        for _ in range(iters):
-            self.fit(df)
-            var = max(
-                float(np.mean(self.strike_.to_numpy() ** 2 + self.econ_.to_numpy() ** 2) / 2),
-                1e-4,
-            )
-            new = 1.0 / (2.0 * var)
-            done = abs(new - self.ridge) / max(new, 1e-9) < tol
-            self.ridge = new
-            if done:
-                break
+    def fit_eb(self, df: pd.DataFrame, probe_ridge: float = 0.05):
+        """One-shot method-of-moments estimate, as in CRI+.
+
+        Iterating on already-shrunken estimates is a feedback loop that
+        collapses every player onto 100.
+        """
+        keep = self.ridge
+        self.ridge = probe_ridge
+        self.fit(df)
+        skill = (self.strike_ - self.econ_).to_numpy()
+        se = self.skill_se(df).to_numpy()
+        observed = float(np.var(skill))
+        sampling = float(np.mean(se ** 2))
+        self.signal_ratio_ = observed / max(sampling, 1e-12)
+        sigma2 = max(observed - sampling, 1e-3)
+        self.ridge = 1.0 / (2.0 * sigma2)
+        if not np.isfinite(self.ridge) or self.ridge <= 0:
+            self.ridge = keep
         return self.fit(df)
 
     def skill_se(self, df: pd.DataFrame) -> pd.Series:
@@ -274,7 +294,11 @@ def build(fmt: str = "test", min_balls: int | None = None):
     df = load_bowling(fmt)
     c = careers(df)
     keep = c.loc[c["balls"] >= min_balls, "player"]
-    sub = df[df["player"].isin(keep)].copy()
+    # Rate on Full Member opposition only, but report career totals from the
+    # full record. Mixing the two silently rewrote history.
+    from formats import FULL_MEMBERS
+
+    sub = df[df["player"].isin(keep) & df["opposition"].isin(FULL_MEMBERS)].copy()
     if sub.empty:
         raise ValueError(
             f"no {fmt} bowler reaches {min_balls} balls; threshold is wrong "

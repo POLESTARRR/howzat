@@ -209,6 +209,7 @@ class CriPlusModel:
         self.era_mode = era_mode
         self.use_home = use_home
         self.home_off_ = None
+        self.signal_ratio_ = None
 
     def _design(self, df: pd.DataFrame):
         self.players = pd.Index(sorted(df["player"].unique()))
@@ -324,24 +325,43 @@ class CriPlusModel:
         self.opp_ = pd.Series(opp - opp.mean(), index=self.opps)
         return self
 
-    def fit_eb(self, df: pd.DataFrame, iters: int = 12, tol: float = 1e-3) -> "CriPlusModel":
+    def fit_eb(self, df: pd.DataFrame, probe_ridge: float = 0.05) -> "CriPlusModel":
         """Fit with the shrinkage strength estimated from the data.
 
         A ridge penalty lam * s^2 is equivalent to a Gaussian prior
-        N(0, sigma^2) on player skill with lam = 1 / (2 sigma^2). Rather than
-        hand-picking lam, iterate: fit, re-estimate the spread of true skill,
-        refit. Hand-picked shrinkage was letting 31-innings careers into the
-        all-time top ten, which is a sample-size artefact, not a finding.
+        N(0, sigma^2) on player skill, with lam = 1 / (2 sigma^2). Estimating
+        sigma^2 rather than hand-picking it matters: hand-picked shrinkage let
+        31-innings careers into the all-time top ten.
+
+        The estimate is taken ONCE from a lightly-penalised probe fit, then
+        applied. Iterating instead -- re-estimating from an already-shrunken
+        fit each pass -- is a feedback loop: shrunken estimates look less
+        variable, which raises lam, which shrinks them further. On women's
+        Tests it ran 0.35 -> 2.27 -> 4.94 -> 9.89 -> 22.88 -> 79.64 until every
+        player collapsed onto 100.
+
+        An observed spread contains both true spread and sampling noise, so
+        sigma^2 is recovered by method of moments:
+
+            sigma^2 = var(skill_hat) - mean(se^2)
+
+        `signal_ratio_` records var/noise. Below about 2 the data cannot
+        separate players at all and any rating is mostly an artefact.
         """
-        for _ in range(iters):
-            self.fit(df)
-            var = float(np.mean(self.skill_.to_numpy() ** 2))
-            var = max(var, 1e-4)
-            new_lam = 1.0 / (2.0 * var)
-            if abs(new_lam - self.ridge_player) / max(new_lam, 1e-9) < tol:
-                self.ridge_player = new_lam
-                break
-            self.ridge_player = new_lam
+        keep = self.ridge_player
+        self.ridge_player = probe_ridge
+        self.fit(df)
+        skill = self.skill_.to_numpy()
+        se = self.skill_se(df).to_numpy()
+
+        observed = float(np.var(skill))
+        sampling = float(np.mean(se ** 2))
+        self.signal_ratio_ = observed / max(sampling, 1e-12)
+        sigma2 = max(observed - sampling, 1e-3)
+
+        self.ridge_player = 1.0 / (2.0 * sigma2)
+        if not np.isfinite(self.ridge_player) or self.ridge_player <= 0:
+            self.ridge_player = keep
         return self.fit(df)
 
     def skill_se(self, df: pd.DataFrame) -> pd.Series:

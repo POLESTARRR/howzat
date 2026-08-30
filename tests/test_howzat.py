@@ -769,6 +769,20 @@ class TestWomensCricket(unittest.TestCase):
             self.assertIn(p, top15, f"{p} should rank top-15 in women's ODIs")
         self.assertEqual(d.iloc[0].player, "MM Lanning")
 
+    def test_womens_t20i_ratings_match_consensus(self):
+        import pandas as pd
+        from formats import PROC
+
+        path = PROC / "cri_plus_wt20i.parquet"
+        if not path.exists():
+            self.skipTest("women's T20I ratings not built")
+        d = pd.read_parquet(path).sort_values("bat_plus", ascending=False)
+        top12 = set(d.head(12).player)
+        hits = sum(p in top12 for p in
+                   ("SFM Devine", "BL Mooney", "AJ Healy", "DJS Dottin",
+                    "Nat Sciver-Brunt", "SJ Taylor"))
+        self.assertGreaterEqual(hits, 4, "women's T20I top 12 should be familiar")
+
     def test_associates_still_excluded_after_normalising(self):
         from formats import FULL_MEMBERS, normalise_team
 
@@ -894,6 +908,73 @@ class TestRunsAboveReplacement(unittest.TestCase):
                    ("M Muralidaran", "JH Kallis", "SR Tendulkar", "SK Warne",
                     "R Dravid", "RT Ponting"))
         self.assertGreaterEqual(hits, 5, "RAR top 15 should be uncontroversial")
+
+
+class TestEmpiricalBayesStability(unittest.TestCase):
+    """Iterating EB on already-shrunken estimates collapses every rating.
+
+    Re-estimating the prior from shrunken skills is a feedback loop: shrunken
+    estimates look less variable, which raises lambda, which shrinks them
+    further. On women's Tests it ran 0.35 -> 2.27 -> 4.94 -> 9.89 -> 22.88 ->
+    79.64 and put every player on 100. The prior is now estimated once from a
+    lightly-penalised probe fit, with sampling variance subtracted.
+    """
+
+    def test_shrinkage_stays_in_a_sane_range(self):
+        from cri_plus import build
+
+        _, m, _ = build()
+        self.assertLess(m.ridge_player, 10.0, "shrinkage has run away")
+        self.assertGreater(m.ridge_player, 0.1, "shrinkage has collapsed")
+
+    def test_signal_ratio_is_reported(self):
+        from cri_plus import build
+
+        _, m, _ = build()
+        self.assertIsNotNone(m.signal_ratio_)
+        self.assertGreater(m.signal_ratio_, 2.0, "men's Tests must be separable")
+
+    def test_ratings_retain_spread(self):
+        """A collapsed fit puts everyone within a point or two of 100."""
+        from cri_plus import build
+
+        _, _, out = build()
+        self.assertGreater(out.cri_plus.std(), 20.0)
+        self.assertGreater(out.cri_plus.max() - out.cri_plus.min(), 100.0)
+
+    def test_thin_formats_are_flagged_not_faked(self):
+        import pandas as pd
+        from formats import PROC
+
+        path = PROC / "cri_plus_wtest.parquet"
+        if not path.exists():
+            self.skipTest("women's Tests not built")
+        d = pd.read_parquet(path)
+        self.assertIn("signal_ratio", d.columns,
+                      "thin formats must carry their signal/noise ratio")
+
+
+class TestCareerTotalsSurviveFiltering(unittest.TestCase):
+    """Rating scope and career totals are different questions.
+
+    Applying the Full Member filter at load rewrote history: Warne's 708 Test
+    wickets became 702. Ratings are fitted on Full Member opposition; totals
+    are reported from the full record.
+    """
+
+    def test_full_member_filter_does_not_alter_totals(self):
+        import pandas as pd
+        from bowl_plus import PROC
+
+        path = PROC / "bowl_plus_test.parquet"
+        if not path.exists():
+            self.skipTest("bowling not built")
+        d = pd.read_parquet(path).set_index("player")
+        for name, wkts in [("SK Warne", 708), ("GD McGrath", 563),
+                           ("M Muralidaran", 800), ("JM Anderson", 704)]:
+            if name in d.index:
+                self.assertEqual(int(d.loc[name, "wickets"]), wkts,
+                                 f"{name} total altered by rating scope")
 
 
 if __name__ == "__main__":

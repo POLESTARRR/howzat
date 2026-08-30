@@ -182,7 +182,15 @@ def rate_format(fmt: str) -> pd.DataFrame:
     sub = df[df["player"].isin(keep)].copy()
 
     model = CriPlusModel().fit_eb(sub)
+    # Below ~2, the observed spread between players is mostly sampling noise
+    # and any rating is largely an artefact. Say so rather than publishing a
+    # confident-looking number.
+    ratio = getattr(model, "signal_ratio_", None)
+    if ratio is not None and ratio < 2.0:
+        print(f"  [{fmt}] WARNING signal/noise {ratio:.2f}: too few innings per "
+              f"player to separate them; ratings are indicative only")
     out = careers.merge(model.ratings(sub), on="player", how="inner")
+    out["signal_ratio"] = ratio
 
     out["sr_plus"] = strike_rate_index(sub, pd.Index(out["player"])).to_numpy()
 

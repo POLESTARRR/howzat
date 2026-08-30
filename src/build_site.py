@@ -99,6 +99,9 @@ def build_payload() -> dict:
     for key, path, label in [
         ("odi_bat", PROC / "cri_plus_odi.parquet", "ODI batting"),
         ("t20_bat", PROC / "cri_plus_t20i.parquet", "T20I batting"),
+        ("wodi_bat", PROC / "cri_plus_wodi.parquet", "Women's ODI"),
+        ("wt20_bat", PROC / "cri_plus_wt20i.parquet", "Women's T20I"),
+        ("wtest_bat", PROC / "cri_plus_wtest.parquet", "Women's Test"),
     ]:
         v = _bat_view(path, label)
         if v:
@@ -107,6 +110,8 @@ def build_payload() -> dict:
         ("test_bowl", PROC / "bowl_plus_test.parquet", "Test bowling"),
         ("odi_bowl", PROC / "bowl_plus_odi.parquet", "ODI bowling"),
         ("t20_bowl", PROC / "bowl_plus_t20i.parquet", "T20I bowling"),
+        ("wodi_bowl", PROC / "bowl_plus_wodi.parquet", "Women's ODI bowling"),
+        ("wt20_bowl", PROC / "bowl_plus_wt20i.parquet", "Women's T20I bowling"),
     ]:
         v = _bowl_view(path, label)
         if v:
