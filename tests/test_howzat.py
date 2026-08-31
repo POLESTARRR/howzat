@@ -1117,5 +1117,47 @@ class TestIntervalsBelongToTheirMetric(unittest.TestCase):
         self.assertTrue((rel_bat > 0).all())
 
 
+class TestEncoding(unittest.TestCase):
+    """Generated HTML must declare its own encoding.
+
+    GitHub Pages sends charset=utf-8 in the HTTP header, so the hosted site
+    looked fine, but opening the file locally has no header: the browser
+    guessed Latin-1 and every en-dash rendered as "a-tilde-euro-quote". A page
+    must be readable however it is opened.
+    """
+
+    def _html(self):
+        from build_site import build_payload, render
+
+        return render(build_payload())
+
+    def test_site_declares_utf8(self):
+        h = self._html()
+        head = h[:200].lower()
+        self.assertIn("charset", head, "no charset declaration in the first 200 bytes")
+        self.assertIn("utf-8", head)
+
+    def test_site_declares_viewport(self):
+        self.assertIn("viewport", self._html()[:300].lower())
+
+    def test_site_round_trips_through_utf8(self):
+        """The bytes on disk must decode back to the same characters."""
+        h = self._html()
+        self.assertEqual(h.encode("utf-8").decode("utf-8"), h)
+        for ch in ("–", "—", "·"):
+            if ch in h:
+                self.assertNotIn(ch.encode("utf-8").decode("latin-1"), h,
+                                 "page already contains mojibake")
+
+    def test_verdict_card_declares_utf8(self):
+        from debate import Debate
+        from mock_provider import MockProvider
+        from verdict_card import render_card
+
+        card = render_card(Debate(MockProvider()).run("Bradman or Tendulkar?"))
+        self.assertIn("charset", card[:200].lower())
+        self.assertIn("utf-8", card[:200].lower())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

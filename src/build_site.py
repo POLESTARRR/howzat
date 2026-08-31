@@ -259,7 +259,10 @@ code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--ac
 
 def render(payload: dict) -> str:
     m = payload["meta"]
-    return f"""<title>CRI+ — Era-Adjusted Cricket Ratings</title>
+    return f"""<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Howzat — Era-Adjusted Cricket Ratings</title>
 <style>{CSS}</style>
 <div class="wrap">
 <header>

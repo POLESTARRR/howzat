@@ -86,7 +86,10 @@ def render_card(tr: Any) -> str:
 
     evidence = e(json.dumps(tr.facts, indent=2, default=str)[:9000])
 
-    return f"""<title>Verdict — {e(tr.question[:60])}</title>
+    return f"""<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verdict — {e(tr.question[:60])}</title>
 <style>{CSS}</style>
 <div class="card">
   <div class="q"><span class="tag">Howzat verdict</span><h1>{e(tr.question)}</h1></div>
@@ -103,5 +106,5 @@ def render_card(tr: Any) -> str:
   <details><summary>Evidence trail — every tool call behind this verdict</summary>
     <pre>{evidence}</pre></details>
 </div>
-<footer>Grounded in CRI+, an era-adjusted rating over 93,923 Test innings (1877–2026).
-CRI+ 100 = an average Test batter of the same era.</footer>"""
+<footer>Grounded in era-adjusted ratings over every Test, ODI and T20I innings,
+men's and women's, 1877–2026. 100 = an average player of the same era and format.</footer>"""
