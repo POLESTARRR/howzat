@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push: {branches: [main]}
+  pull_request: {branches: [main]}
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -q pandas numpy scipy pyarrow beautifulsoup4 lxml requests
+      - name: Tests
+        run: PYTHONPATH=src python3 -m unittest discover -s tests -v
+      - name: Validation checks
+        # A rating that disagrees with settled cricket opinion is broken, not
+        # brave. These assert Bradman first, canonical greats in the top 100,
+        # intervals narrowing with sample size, and career totals matching the
+        # published record exactly.
+        run: PYTHONPATH=src python3 src/validate.py
+      - name: Rebuild site and fail on drift
+        run: |
+          PYTHONPATH=src python3 src/build_site.py
+          cp out/index.html docs/index.html
+          git diff --exit-code --stat docs/index.html || \
+            (echo "docs/index.html is stale — run build_site.py and commit"; exit 1)
