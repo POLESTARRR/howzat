@@ -16,6 +16,9 @@ from cri_plus import load_innings
 ROOT = Path(__file__).resolve().parents[1]
 PROC = ROOT / "data" / "processed"
 OUT = ROOT / "out"
+# GitHub Pages publishes main:/docs, so a build that only wrote out/ left the
+# live site on whatever was last copied across by hand. Write both.
+DOCS = ROOT / "docs"
 
 
 def _bat_view(path: Path, label: str) -> dict | None:
@@ -679,11 +682,13 @@ settle();
 
 def main() -> None:
     payload = build_payload()
-    OUT.mkdir(parents=True, exist_ok=True)
-    dest = OUT / "index.html"
-    dest.write_text(render(payload), encoding="utf-8")
-    kb = dest.stat().st_size / 1024
-    print(f"wrote {dest}  ({kb:.0f} KB, {len(payload['players'])} players, no backend)")
+    html = render(payload)
+    kb = len(html.encode("utf-8")) / 1024
+    for d in (OUT, DOCS):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(html, encoding="utf-8")
+        print(f"wrote {d / 'index.html'}")
+    print(f"({kb:.0f} KB, {len(payload['players'])} players, no backend)")
 
 
 if __name__ == "__main__":
