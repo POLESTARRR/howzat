@@ -236,7 +236,23 @@ h2{font:400 30px/1.15 var(--serif);margin:64px 0 8px;letter-spacing:-.015em}
 .settle{margin:34px 0 0;padding:0;overflow:hidden}
 .pickers{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:20px 22px;
   border-bottom:1px solid var(--line);background:var(--paper)}
-.pick{flex:1;min-width:170px}
+.pick{flex:1;min-width:170px;position:relative}
+/* A real listbox. The native <datalist> this replaces rendered as browser
+   chrome rather than DOM: nothing opened on click, and on mobile it never
+   appeared at all, so the field could only be typed into. */
+.opts{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:40;
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  max-height:302px;overflow-y:auto;box-shadow:0 8px 26px rgba(20,18,12,.16)}
+.opt{display:flex;align-items:baseline;gap:8px;padding:9px 13px;cursor:pointer;
+  border-bottom:1px solid var(--hair);font:14px var(--sans)}
+.opt:last-child{border-bottom:0}
+.opt:hover,.opt.on{background:var(--accent-wash)}
+.opt .on-nm{font-weight:600;color:var(--ink)}
+.opt .on-c{color:var(--muted);font:600 10px var(--sans);letter-spacing:.09em}
+.opt .on-p{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;
+  font-size:13px}
+.opt mark{background:none;color:var(--accent-ink);font-weight:700}
+.opts .none{padding:14px;color:var(--muted);font:14px var(--serif)}
 .pick label,.ctl label{display:block;font:600 10.5px/1 var(--sans);text-transform:uppercase;
   letter-spacing:.13em;color:var(--muted);margin-bottom:7px}
 .pick input{width:100%}
@@ -359,6 +375,13 @@ code{font:12.5px var(--mono);background:var(--accent-wash);color:var(--accent-in
   body{padding:0 16px 60px}
   .stat{border-left:0;padding:12px 0}
   .stats{border-bottom-width:1px}
+  /* Stack the pickers. Side by side they squeeze to nothing on a phone. */
+  .pickers{padding:16px}
+  .pick{flex:1 1 100%;min-width:0}
+  .vs{flex:1 1 100%;text-align:center;padding:0}
+  #pfmt{width:100%}
+  .verdict{padding:16px}
+  .vcard{min-width:0}
 }
 """
 
@@ -388,17 +411,20 @@ def render(payload: dict) -> str:
 <div class="panel settle">
   <div class="pickers">
     <div class="pick">
-      <label>Player A</label>
-      <input id="pa" placeholder="Bradman" autocomplete="off" list="names">
+      <label for="pa">Player A</label>
+      <input id="pa" placeholder="Bradman" autocomplete="off" role="combobox"
+             aria-expanded="false" aria-autocomplete="list" aria-controls="pa-opts">
+      <div class="opts" id="pa-opts" role="listbox" hidden></div>
     </div>
     <div class="vs">vs</div>
     <div class="pick">
-      <label>Player B</label>
-      <input id="pb" placeholder="Tendulkar" autocomplete="off" list="names">
+      <label for="pb">Player B</label>
+      <input id="pb" placeholder="Tendulkar" autocomplete="off" role="combobox"
+             aria-expanded="false" aria-autocomplete="list" aria-controls="pb-opts">
+      <div class="opts" id="pb-opts" role="listbox" hidden></div>
     </div>
     <select id="pfmt"></select>
   </div>
-  <datalist id="names"></datalist>
   <div id="verdict" class="verdict"></div>
 </div>
 
@@ -665,17 +691,103 @@ function settle() {{
        separate these two, and saying so is more honest than inventing a ranking.</div>`);
 }}
 
-function refreshNames() {{
-  const key = pf.value || BATVIEWS[0][0];
-  document.getElementById('names').innerHTML =
-    VIEWS[key].rows.slice(0, 400).map(p => `<option value="${{p.n}}">`).join('');
+// ---- player picker --------------------------------------------------------
+const esc = s => s.replace(/[&<>"]/g, c => (
+  {{'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}}[c]));
+
+function combobox(input, box) {{
+  let items = [], active = -1;
+
+  const rowsFor = q => {{
+    const all = VIEWS[pf.value || BATVIEWS[0][0]].rows;
+    if (!q) return all.slice(0, 80);
+    const s = q.toLowerCase();
+    // Surname first, then anything containing the query, so typing "ten"
+    // reaches Tendulkar before it reaches players merely containing "ten".
+    const starts = [], has = [];
+    for (const p of all) {{
+      const n = p.n.toLowerCase();
+      if (n.split(/[^a-z]+/).some(w => w.startsWith(s))) starts.push(p);
+      else if (n.includes(s)) has.push(p);
+    }}
+    return starts.concat(has).slice(0, 80);
+  }};
+
+  const mark = (name, q) => {{
+    if (!q) return esc(name);
+    const i = name.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return esc(name);
+    return esc(name.slice(0, i)) + '<mark>' + esc(name.slice(i, i + q.length)) +
+           '</mark>' + esc(name.slice(i + q.length));
+  }};
+
+  // typing filters by what is typed, but clicking a field that already holds a
+  // chosen player shows the whole list, otherwise you could only ever see the
+  // name already in the box and never browse to a different one.
+  function open(typing) {{
+    const raw = input.value.trim();
+    const all = VIEWS[pf.value || BATVIEWS[0][0]].rows;
+    const committed = !typing && all.some(p => p.n.toLowerCase() === raw.toLowerCase());
+    const q = committed ? '' : raw;
+    items = rowsFor(q);
+    if (!items.length) {{
+      box.innerHTML = '<div class="none">No player of that name in this table.</div>';
+    }} else {{
+      box.innerHTML = items.map((p, i) => `<div class="opt" role="option" data-i="${{i}}">
+        <span class="on-nm">${{mark(p.n, q)}}</span><span class="on-c">${{esc(p.c)}}</span>
+        <span class="on-p">${{p.p.toFixed(0)}}</span></div>`).join('');
+    }}
+    box.hidden = false; input.setAttribute('aria-expanded', 'true');
+    active = -1; box.scrollTop = 0;
+  }}
+
+  function close() {{
+    box.hidden = true; input.setAttribute('aria-expanded', 'false'); active = -1;
+  }}
+
+  function choose(i) {{
+    if (!items[i]) return;
+    input.value = items[i].n;
+    close(); settle();
+  }}
+
+  function highlight(n) {{
+    const els = [...box.querySelectorAll('.opt')];
+    if (!els.length) return;
+    active = (n + els.length) % els.length;
+    els.forEach((e, i) => e.classList.toggle('on', i === active));
+    els[active].scrollIntoView({{block: 'nearest'}});
+  }}
+
+  input.addEventListener('focus', () => open(false));
+  input.addEventListener('click', () => open(false));
+  input.addEventListener('input', () => {{ open(true); settle(); }});
+  // mousedown, not click: it fires before the input's blur closes the list.
+  box.addEventListener('mousedown', e => {{
+    const row = e.target.closest('.opt');
+    if (row) {{ e.preventDefault(); choose(+row.dataset.i); }}
+  }});
+  input.addEventListener('blur', () => setTimeout(close, 120));
+  input.addEventListener('keydown', e => {{
+    if (e.key === 'ArrowDown') {{ e.preventDefault(); if (box.hidden) open(false); highlight(active + 1); }}
+    else if (e.key === 'ArrowUp') {{ e.preventDefault(); highlight(active - 1); }}
+    else if (e.key === 'Enter') {{ if (active >= 0) {{ e.preventDefault(); choose(active); }} else close(); }}
+    else if (e.key === 'Escape') close();
+  }});
 }}
 
-['pa', 'pb'].forEach(id => document.getElementById(id).addEventListener('input', settle));
-pf.addEventListener('change', () => {{ refreshNames(); settle(); }});
-refreshNames();
-document.getElementById('pa').value = 'Bradman';
-document.getElementById('pb').value = 'Tendulkar';
+combobox(document.getElementById('pa'), document.getElementById('pa-opts'));
+combobox(document.getElementById('pb'), document.getElementById('pb-opts'));
+pf.addEventListener('change', settle);
+// Seed with the resolved full names, not the surnames. The field should show
+// the player actually selected, which is also what lets the picker tell a
+// committed choice from something half-typed.
+(() => {{
+  const k = pf.value || BATVIEWS[0][0];
+  const a = findPlayer('Bradman', k), b = findPlayer('Tendulkar', k);
+  document.getElementById('pa').value = a ? a.n : 'Bradman';
+  document.getElementById('pb').value = b ? b.n : 'Tendulkar';
+}})();
 settle();
 </script>"""
 
