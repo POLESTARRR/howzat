@@ -113,7 +113,7 @@ def cmd_build(a) -> None:
             cols = ["player", "country", "wickets", "bowl_average", "economy", "bowl_plus"]
             print(out.head(10)[cols].to_string(index=False, float_format=lambda v: f"{v:.2f}"))
         except FileNotFoundError as e:
-            print(f"{fmt} bowling: skipped — {str(e).split(chr(10))[0]}")
+            print(f"{fmt} bowling: skipped: {str(e).split(chr(10))[0]}")
     build_site.main()
 
 

@@ -1,4 +1,4 @@
-"""RAR — runs above replacement. Cricket's missing common currency.
+"""RAR: runs above replacement. Cricket's missing common currency.
 
 CRI+ and BOWL+ are *rate* statistics: they say how good a player was per
 innings, not how much they were worth in total. That leaves two things
@@ -11,8 +11,8 @@ with the honest part of it kept and the speculative part left out.
 
 Method
 ------
-**Replacement level** is what a team could get for free — the fringe player
-who fills in. It is set at the 25th percentile of qualified players, computed
+**Replacement level** is what a team could get for free, meaning the fringe
+player who fills in. It is set at the 25th percentile of qualified players, computed
 *per format and era* so it moves with the game rather than being a fixed
 number.
 
@@ -29,7 +29,7 @@ Both are era-adjusted through the same offsets the ratings use, so a run in
 What this deliberately does NOT do
 ----------------------------------
 It stops at runs and does not convert to wins. That conversion needs match
-outcomes — which innings actually produced victories — and this dataset is
+outcomes (which innings actually produced victories) and this dataset is
 innings-level with no results column. Inventing a runs-per-win constant would
 make the number look more finished and be less true, so it is left out until
 the match data exists to estimate it.

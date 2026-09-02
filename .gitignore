@@ -1,9 +1,9 @@
-# secrets — never commit
+# secrets: never commit
 .env
 .env.*
 !.env.example
 
-# 531MB of cached Statsguru HTML — regenerable, never commit
+# 531MB of cached Statsguru HTML: regenerable, never commit
 data/raw/
 data/llm_cache/
 out/*.log

@@ -22,7 +22,7 @@ CANON = [
 
 
 def check(name: str, ok: bool, detail: str = "") -> bool:
-    print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f" — {detail}" if detail else ""))
+    print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f": {detail}" if detail else ""))
     return ok
 
 
@@ -33,21 +33,21 @@ def main() -> None:
 
     results = []
 
-    print("CHECK 1 — Bradman")
+    print("CHECK 1: Bradman")
     top = out.iloc[0]
     results.append(check("Bradman is #1", top.player == "DG Bradman", f"got {top.player} ({top.cri_plus:.0f})"))
     if len(out) > 1:
         gap = top.cri_plus / out.iloc[1].cri_plus
         results.append(check("Bradman leads by a clear margin", gap > 1.15, f"{gap:.2f}x over {out.iloc[1].player}"))
 
-    print("\nCHECK 2 — era effects are directionally sane")
+    print("\nCHECK 2: era effects are directionally sane")
     era = model.era_
     print("   " + era.round(3).to_string().replace("\n", "\n   "))
     if 1950 in era.index and 2000 in era.index:
         results.append(check("2000s scored easier than 1950s", era[2000] > era[1950],
                              f"2000s={era[2000]:+.3f} vs 1950s={era[1950]:+.3f}"))
 
-    print("\nCHECK 3 — canonical greats rank highly")
+    print("\nCHECK 3: canonical greats rank highly")
     top100 = set(out.head(100).player)
     found = [p for p in CANON if p in set(out.player)]
     hits = [p for p in found if p in top100]
@@ -60,7 +60,7 @@ def main() -> None:
         print("   outside top 100:")
         print("   " + sub.to_string(index=False).replace("\n", "\n   "))
 
-    print("\nCHECK 4 — shrinkage actually bites")
+    print("\nCHECK 4: shrinkage actually bites")
     lo = out[out.innings < 30]
     hi = out[out.innings >= 100]
     if len(lo) and len(hi):
@@ -68,11 +68,11 @@ def main() -> None:
                              lo.cri_plus.std() < hi.cri_plus.std() * 1.6,
                              f"sd(<30 inns)={lo.cri_plus.std():.1f} vs sd(100+)={hi.cri_plus.std():.1f}"))
 
-    print("\nCHECK 5 — CRI+ disagrees with raw average (else it adds nothing)")
+    print("\nCHECK 5: CRI+ disagrees with raw average (else it adds nothing)")
     r = np.corrcoef(out.average, out.cri_plus)[0, 1]
     results.append(check("correlated but not identical to average", 0.6 < r < 0.985, f"r={r:.3f}"))
 
-    print("\nCHECK 6 — uncertainty scales with sample size")
+    print("\nCHECK 6: uncertainty scales with sample size")
     out["ci_width"] = out.cri_hi - out.cri_lo
     bands = [(20, 40), (40, 80), (80, 150), (150, 10_000)]
     widths = []
@@ -85,7 +85,7 @@ def main() -> None:
                          all(a > b for a, b in zip(widths, widths[1:])),
                          " > ".join(f"{w:.0f}" for w in widths)))
 
-    print("\nCHECK 7 — Bradman's separation survives uncertainty")
+    print("\nCHECK 7: Bradman's separation survives uncertainty")
     brad = out[out.player == "DG Bradman"]
     if len(brad):
         b = brad.iloc[0]
@@ -94,7 +94,7 @@ def main() -> None:
         results.append(check("Bradman's lower bound beats most point estimates",
                              beaten > 0.98, f"clears {beaten:.1%} of the field"))
 
-    print("\nCHECK 8 — biggest era corrections")
+    print("\nCHECK 8: biggest era corrections")
     o = out.copy()
     o["avg_rank"] = o.average.rank(ascending=False)
     o["cri_rank"] = o.cri_plus.rank(ascending=False)

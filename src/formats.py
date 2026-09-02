@@ -41,7 +41,7 @@ WEIGHTS = {
 }
 MIN_INNINGS = {
     "test": 20, "odi": 25, "t20i": 20,
-    # Women's Tests are rare — barely 150 have ever been played — so the bar
+    # Women's Tests are rare (barely 150 have ever been played) so the bar
     # must be far lower or nobody qualifies at all.
     "wtest": 8, "wodi": 25, "wt20i": 20,
 }
@@ -106,7 +106,7 @@ def is_womens(fmt: str) -> bool:
 def load_format(fmt: str) -> pd.DataFrame:
     path = PROC / f"{fmt}_innings.parquet"
     if not path.exists():
-        raise FileNotFoundError(f"{path} missing — run: python3 src/fetch_statsguru.py {fmt}")
+        raise FileNotFoundError(f"{path} missing: run: python3 src/fetch_statsguru.py {fmt}")
     df = pd.read_parquet(path)
     df = df.dropna(subset=["runs", "year"]).copy()
     df["decade"] = (df["year"] // 10 * 10).astype(int)
@@ -243,7 +243,7 @@ def main() -> None:
         try:
             out = rate_format(fmt)
         except FileNotFoundError as e:
-            print(f"{fmt}: skipped — {e}")
+            print(f"{fmt}: skipped: {e}")
             continue
         frames.append(out)
         wd, wt = WEIGHTS[fmt]

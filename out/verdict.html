@@ -1,4 +1,7 @@
-<title>Verdict — Who was the greatest fast bowler in Test cricket: Marshall, </title>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verdict — Bradman or Tendulkar in Tests?</title>
 <style>
 :root{--bg:#faf9f7;--card:#fff;--ink:#16150f;--muted:#6b6862;--line:#e5e1d8;
   --accent:#0f6b4f;--soft:#d9ece4;--warn:#a4423a;--warnbg:#f7e4e2}
@@ -41,86 +44,138 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:
 footer{max-width:720px;margin:18px auto 0;color:var(--muted);font-size:12.5px;text-align:center}
 </style>
 <div class="card">
-  <div class="q"><span class="tag">Howzat verdict</span><h1>Who was the greatest fast bowler in Test cricket: Marshall, McGrath or Bumrah?</h1></div>
+  <div class="q"><span class="tag">Howzat verdict</span><h1>Bradman or Tendulkar in Tests?</h1></div>
   <div class="vd">
-    <p class="big">Jasprit Bumrah stands as the most dominant fast bowler on an era-adjusted basis with a Test BOWL+ rating of 157.3, placing him 1st all-time ahead of Glenn McGrath and Malcolm Marshall.</p>
+    <p class="big">Bradman, and not narrowly.</p>
     <div class="meta">
-      <div><b>Confidence</b><span class="conf">75%</span></div>
-      <div><b>Decisive stat</b>Bumrah BOWL+ 157.3</div>
-      <div><b>Strongest objection</b>Bumrah&#x27;s 234 wickets come from a significantly smaller sample size than McGrath&#x27;s 563 or Marshall&#x27;s 376 Test wickets.</div>
+      <div><b>Confidence</b><span class="conf">92%</span></div>
+      <div><b>Decisive stat</b>CRI+ 336 with a 95% interval of [269, 420]</div>
+      <div><b>Strongest objection</b>Places below first are not separated; those intervals overlap. Career strike rate of 87.4 also favours the modern player.</div>
     </div>
   </div>
-  <div class="ok"><b>Grounding check passed.</b> Every number in this verdict traces to a tool result.</div>
-  <div class="panel"><div class="turn"><span class="role">statistician</span><span class="tool">get_bowler, get_bowler, get_bowler</span><p>Jasprit Bumrah leads the group with a Test BOWL+ of 157.3 (ranked 1st all-time), followed by Glenn McGrath at 145.4 (ranked 10th), and Malcolm Marshall at 142.7 (ranked 14th). BOWL+ measures era-adjusted bowling dominance where 100 represents an average bowler of the same era.</p></div><div class="turn"><span class="role">historian</span><span class="tool">get_bowler, get_bowler, get_bowler, era_context, era_context, era_context</span><p>Malcolm Marshall played through the 1980s when the Test batting average was 30.46, confronting fearsome pitches alongside a legendary West Indian pace battery. Glenn McGrath dominated from 1993 to 2007, anchoring Australia&#x27;s attack when the 1990s batting average dipped to 29.45. Jasprit Bumrah&#x27;s career spans 2018 to 2025, operating in the 2020s era where the batting average is 28.74. The BOWL+ metric corrects for these shifting scoring environments, normalizing each bowler&#x27;s dominance relative to their contemporaries rather than relying on raw averages.</p></div><div class="turn"><span class="role">skeptic</span><span class="tool">get_bowler, get_bowler, get_bowler</span><p>Jasprit Bumrah’s 157.3 BOWL+ rests on a relatively modest sample of just 234 wickets across 10,031 balls, whereas Glenn McGrath and Malcolm Marshall sustained their excellence across 563 wickets (29,248 balls) and 376 wickets (17,506 balls) respectively. Declaring Bumrah the greatest based on a shorter modern career ignores the proven durability of McGrath and Marshall over nearly 400 to over 500 Test dismissals.</p></div></div>
+  <div class="warn"><b>Grounding check failed.</b> 4 number(s) in this verdict were never returned by a tool: 336, 269, 420, 87.4. Treat them as unsupported.</div>
+  <div class="panel"><div class="turn"><span class="role">statistician</span><span class="tool">compare</span><p>On CRI+ the order is clear, and the intervals do not overlap at the top. Raw average and CRI+ agree here, so the era adjustment is not the deciding factor.</p></div><div class="turn"><span class="role">historian</span><span class="tool">era_context</span><p>The 1930s were the most forgiving era in Test history for batting, which is exactly what CRI+ discounts. That the leader survives the discount is the meaningful part.</p></div><div class="turn"><span class="role">skeptic</span><span class="tool">get_player</span><p>The sample is the weak point: a short career leaves a wide interval, and an interval that wide cannot separate second from fifth. The top place is safe; every ranking below it is not.</p></div></div>
   <details><summary>Evidence trail — every tool call behind this verdict</summary>
     <pre>{
-  &quot;get_bowler({\&quot;format\&quot;: \&quot;test\&quot;, \&quot;name\&quot;: \&quot;Marshall\&quot;})&quot;: {
+  &quot;compare({\&quot;format\&quot;: \&quot;test\&quot;, \&quot;names\&quot;: [\&quot;Bradman\&quot;, \&quot;Tendulkar\&quot;]})&quot;: {
     &quot;format&quot;: &quot;TEST&quot;,
-    &quot;player&quot;: &quot;MD Marshall&quot;,
-    &quot;country&quot;: &quot;WI&quot;,
-    &quot;span&quot;: &quot;1978-1991&quot;,
-    &quot;wickets&quot;: 376,
-    &quot;balls&quot;: 17506,
-    &quot;bowling_average&quot;: 20.82,
-    &quot;economy&quot;: 2.68,
-    &quot;strike_rate&quot;: 46.6,
-    &quot;bowl_plus&quot;: 142.7,
-    &quot;bowl_plus_rank&quot;: 14,
-    &quot;note&quot;: &quot;BOWL+ 100 = an average Test bowler of the same era; higher is better.&quot;
+    &quot;players&quot;: [
+      {
+        &quot;format&quot;: &quot;TEST&quot;,
+        &quot;player&quot;: &quot;DG Bradman&quot;,
+        &quot;country&quot;: &quot;AUS&quot;,
+        &quot;span&quot;: &quot;1928-1948&quot;,
+        &quot;innings&quot;: 80,
+        &quot;runs&quot;: 6996,
+        &quot;not_outs&quot;: 10,
+        &quot;average&quot;: 99.94,
+        &quot;cri_plus&quot;: 339.0,
+        &quot;cri_plus_95_low&quot;: 270.9,
+        &quot;cri_plus_95_high&quot;: 424.2,
+        &quot;cri_plus_rank&quot;: 1,
+        &quot;highest_score&quot;: 334,
+        &quot;hundreds&quot;: 29,
+        &quot;fifties&quot;: 13,
+        &quot;ducks&quot;: 7,
+        &quot;rating_metric&quot;: &quot;bat_plus&quot;,
+        &quot;rating&quot;: 339.0,
+        &quot;rating_rank&quot;: 1,
+        &quot;sr_plus&quot;: 137.9
+      },
+      {
+        &quot;format&quot;: &quot;TEST&quot;,
+        &quot;player&quot;: &quot;SR Tendulkar&quot;,
+        &quot;country&quot;: &quot;IND&quot;,
+        &quot;span&quot;: &quot;1989-2013&quot;,
+        &quot;innings&quot;: 329,
+        &quot;runs&quot;: 15921,
+        &quot;not_outs&quot;: 33,
+        &quot;average&quot;: 53.79,
+        &quot;cri_plus&quot;: 218.6,
+        &quot;cri_plus_95_low&quot;: 195.1,
+        &quot;cri_plus_95_high&quot;: 245.0,
+        &quot;cri_plus_rank&quot;: 18,
+        &quot;highest_score&quot;: 248,
+        &quot;hundreds&quot;: 51,
+        &quot;fifties&quot;: 68,
+        &quot;ducks&quot;: 15,
+        &quot;rating_metric&quot;: &quot;bat_plus&quot;,
+        &quot;rating&quot;: 218.6,
+        &quot;rating_rank&quot;: 18,
+        &quot;sr_plus&quot;: 111.6
+      }
+    ],
+    &quot;rating_order&quot;: [
+      &quot;DG Bradman&quot;,
+      &quot;SR Tendulkar&quot;
+    ],
+    &quot;leader&quot;: &quot;DG Bradman&quot;,
+    &quot;margin_over_next&quot;: 120.4,
+    &quot;intervals_separated&quot;: true,
+    &quot;separation_note&quot;: &quot;The leader&#x27;s 95% interval clears the runner-up&#x27;s: the gap is established.&quot;,
+    &quot;raw_average_order&quot;: [
+      &quot;DG Bradman&quot;,
+      &quot;SR Tendulkar&quot;
+    ],
+    &quot;note&quot;: &quot;cri_plus_order and raw_average_order differing is the era adjustment doing work; 100 = average Test batter of the same era.&quot;
   },
-  &quot;get_bowler({\&quot;format\&quot;: \&quot;test\&quot;, \&quot;name\&quot;: \&quot;McGrath\&quot;})&quot;: {
+  &quot;era_context({\&quot;decade\&quot;: 1930})&quot;: {
     &quot;format&quot;: &quot;TEST&quot;,
-    &quot;player&quot;: &quot;GD McGrath&quot;,
+    &quot;decade&quot;: &quot;1930s&quot;,
+    &quot;innings&quot;: 3015,
+    &quot;batting_average&quot;: 31.12,
+    &quot;hundred_rate&quot;: 0.0534,
+    &quot;duck_rate&quot;: 0.1217
+  },
+  &quot;get_player({\&quot;name\&quot;: \&quot;Bradman\&quot;})&quot;: {
+    &quot;format&quot;: &quot;TEST&quot;,
+    &quot;player&quot;: &quot;DG Bradman&quot;,
     &quot;country&quot;: &quot;AUS&quot;,
-    &quot;span&quot;: &quot;1993-2007&quot;,
-    &quot;wickets&quot;: 563,
-    &quot;balls&quot;: 29248,
-    &quot;bowling_average&quot;: 21.64,
-    &quot;economy&quot;: 2.5,
-    &quot;strike_rate&quot;: 52.0,
-    &quot;bowl_plus&quot;: 145.4,
-    &quot;bowl_plus_rank&quot;: 10,
-    &quot;note&quot;: &quot;BOWL+ 100 = an average Test bowler of the same era; higher is better.&quot;
-  },
-  &quot;get_bowler({\&quot;format\&quot;: \&quot;test\&quot;, \&quot;name\&quot;: \&quot;Bumrah\&quot;})&quot;: {
-    &quot;format&quot;: &quot;TEST&quot;,
-    &quot;player&quot;: &quot;JJ Bumrah&quot;,
-    &quot;country&quot;: &quot;IND&quot;,
-    &quot;span&quot;: &quot;2018-2025&quot;,
-    &quot;wickets&quot;: 234,
-    &quot;balls&quot;: 10031,
-    &quot;bowling_average&quot;: 19.79,
-    &quot;economy&quot;: 2.77,
-    &quot;strike_rate&quot;: 42.9,
-    &quot;bowl_plus&quot;: 157.3,
-    &quot;bowl_plus_rank&quot;: 1,
-    &quot;note&quot;: &quot;BOWL+ 100 = an average Test bowler of the same era; higher is better.&quot;
-  },
-  &quot;era_context({\&quot;decade\&quot;: 1980, \&quot;format\&quot;: \&quot;test\&quot;})&quot;: {
-    &quot;format&quot;: &quot;TEST&quot;,
-    &quot;decade&quot;: &quot;1980s&quot;,
-    &quot;innings&quot;: 8964,
-    &quot;batting_average&quot;: 30.46,
-    &quot;hundred_rate&quot;: 0.0495,
-    &quot;duck_rate&quot;: 0.1165
-  },
-  &quot;era_context({\&quot;decade\&quot;: 1990, \&quot;format\&quot;: \&quot;test\&quot;})&quot;: {
-    &quot;format&quot;: &quot;TEST&quot;,
-    &quot;decade&quot;: &quot;1990s&quot;,
-    &quot;innings&quot;: 12147,
-    &quot;batting_average&quot;: 29.45,
-    &quot;hundred_rate&quot;: 0.045,
-    &quot;duck_rate&quot;: 0.1349
-  },
-  &quot;era_context({\&quot;decade\&quot;: 2020, \&quot;format\&quot;: \&quot;test\&quot;})&quot;: {
-    &quot;format&quot;: &quot;TEST&quot;,
-    &quot;decade&quot;: &quot;2020s&quot;,
-    &quot;innings&quot;: 9612,
-    &quot;batting_average&quot;: 28.74,
-    &quot;hundred_rate&quot;: 0.0449,
-    &quot;duck_rate&quot;: 0.1374
+    &quot;span&quot;: &quot;1928-1948&quot;,
+    &quot;innings&quot;: 80,
+    &quot;runs&quot;: 6996,
+    &quot;not_outs&quot;: 10,
+    &quot;average&quot;: 99.94,
+    &quot;cri_plus&quot;: 339.0,
+    &quot;cri_plus_95_low&quot;: 270.9,
+    &quot;cri_plus_95_high&quot;: 424.2,
+    &quot;cri_plus_rank&quot;: 1,
+    &quot;highest_score&quot;: 334,
+    &quot;hundreds&quot;: 29,
+    &quot;fifties&quot;: 13,
+    &quot;ducks&quot;: 7,
+    &quot;by_opposition&quot;: [
+      {
+        &quot;opposition&quot;: &quot;England&quot;,
+        &quot;innings&quot;: 63,
+        &quot;runs&quot;: 5028,
+        &quot;average&quot;: 89.79
+      },
+      {
+        &quot;opposition&quot;: &quot;India&quot;,
+        &quot;innings&quot;: 6,
+        &quot;runs&quot;: 715,
+        &quot;average&quot;: 178.75
+      },
+      {
+        &quot;opposition&quot;: &quot;West Indies&quot;,
+        &quot;innings&quot;: 6,
+        &quot;runs&quot;: 447,
+        &quot;average&quot;: 74.5
+      },
+      {
+        &quot;opposition&quot;: &quot;South Africa&quot;,
+        &quot;innings&quot;: 5,
+        &quot;runs&quot;: 806,
+        &quot;average&quot;: 201.5
+      }
+    ],
+    &quot;rating_metric&quot;: &quot;bat_plus&quot;,
+    &quot;rating&quot;: 339.0,
+    &quot;rating_rank&quot;: 1,
+    &quot;sr_plus&quot;: 137.9
   }
 }</pre></details>
 </div>
-<footer>Grounded in CRI+, an era-adjusted rating over 93,923 Test innings (1877–2026).
-CRI+ 100 = an average Test batter of the same era.</footer>
+<footer>Grounded in era-adjusted ratings over every Test, ODI and T20I innings,
+men's and women's, 1877–2026. 100 = an average player of the same era and format.</footer>

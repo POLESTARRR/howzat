@@ -179,7 +179,7 @@ def main() -> None:
     ap.add_argument("--limit", type=int)
     a = ap.parse_args()
 
-    print(f"Howzat debate eval — {'LIVE' if a.live else 'MOCK'}\n")
+    print(f"Howzat debate eval: {'LIVE' if a.live else 'MOCK'}\n")
     results = run(live=a.live, limit=a.limit)
 
     by_kind: dict[str, list[bool]] = {}

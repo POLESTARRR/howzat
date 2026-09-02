@@ -54,7 +54,7 @@ def load_bowling(fmt: str = "test") -> pd.DataFrame:
     path = PROC / f"{fmt}_bowling.parquet"
     if not path.exists():
         raise FileNotFoundError(
-            f"{path} missing — run: python3 src/fetch_statsguru.py {fmt} "
+            f"{path} missing: run: python3 src/fetch_statsguru.py {fmt} "
             f"1877 2026 bowling"
         )
     df = pd.read_parquet(path)

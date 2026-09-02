@@ -78,7 +78,7 @@ def render_card(tr: Any) -> str:
     )
 
     conf = v.get("confidence")
-    conf_html = f'<span class="conf">{e(str(conf))}%</span>' if conf is not None else "—"
+    conf_html = f'<span class="conf">{e(str(conf))}%</span>' if conf is not None else "·"
     dissent = (
         f'<div><b>Strongest objection</b>{e(str(v["dissent"]))}</div>'
         if v.get("dissent") else ""
@@ -89,7 +89,7 @@ def render_card(tr: Any) -> str:
     return f"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Verdict — {e(tr.question[:60])}</title>
+<title>Verdict: {e(tr.question[:60])}</title>
 <style>{CSS}</style>
 <div class="card">
   <div class="q"><span class="tag">Howzat verdict</span><h1>{e(tr.question)}</h1></div>
@@ -97,13 +97,13 @@ def render_card(tr: Any) -> str:
     <p class="big">{e(str(v.get("verdict", "no verdict")))}</p>
     <div class="meta">
       <div><b>Confidence</b>{conf_html}</div>
-      <div><b>Decisive stat</b>{e(str(v.get("decisive_stat") or "—"))}</div>
+      <div><b>Decisive stat</b>{e(str(v.get("decisive_stat") or "·"))}</div>
       {dissent}
     </div>
   </div>
   {grounding}
   <div class="panel">{turns}</div>
-  <details><summary>Evidence trail — every tool call behind this verdict</summary>
+  <details><summary>Evidence trail: every tool call behind this verdict</summary>
     <pre>{evidence}</pre></details>
 </div>
 <footer>Grounded in era-adjusted ratings over every Test, ODI and T20I innings,

@@ -1,7 +1,7 @@
 """ALL+ : an era-adjusted all-rounder rating.
 
-The usual test — "batting average higher than bowling average" — is a blunt
-instrument. It ignores era entirely (a bowling average of 25 meant something
+The usual test is a batting average higher than the bowling average. That is a
+blunt instrument. It ignores era entirely (a bowling average of 25 meant something
 very different in 1890 and 2005), and it treats a marginal contribution in one
 discipline as equal to dominance in the other.
 
@@ -56,7 +56,7 @@ def build(fmt: str = "test") -> pd.DataFrame:
     bowl_path = PROC / f"bowl_plus_{fmt}.parquet"
     for p in (bat_path, bowl_path):
         if not p.exists():
-            raise FileNotFoundError(f"{p} missing — build batting and bowling first")
+            raise FileNotFoundError(f"{p} missing: build batting and bowling first")
 
     bat = pd.read_parquet(bat_path)
     bowl = pd.read_parquet(bowl_path)

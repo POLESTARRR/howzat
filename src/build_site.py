@@ -168,92 +168,195 @@ def build_payload() -> dict:
     }
 
 
+# Wisden Almanack: warm paper stock, ink type, one almanack-yellow accent.
+# Serif for prose and headlines, system sans with tabular figures for every
+# number. All stacks are system-resident: this file must stay self-contained,
+# so no webfont or CDN request is allowed.
 CSS = """
 :root{
-  --bg:#faf9f7; --panel:#fff; --ink:#16150f; --muted:#6b6862; --line:#e5e1d8;
-  --accent:#0f6b4f; --accent-soft:#d9ece4; --bar:#c8bfae; --up:#0f6b4f; --down:#a4423a;
+  --paper:#f4f0e6; --panel:#fbf9f3; --ink:#14120c; --muted:#6e6455;
+  --line:#ded6c2; --hair:#e8e2d3;
+  --accent:#f2c300; --accent-ink:#8a6b00; --accent-wash:#faf0cc;
+  --ball:#8c2318; --turf:#2f6b45; --bar:#b9ad93;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
-  --bg:#131311; --panel:#1c1b19; --ink:#f2efe8; --muted:#9d9890; --line:#2e2c28;
-  --accent:#5ec39a; --accent-soft:#1e3b31; --bar:#453f36; --up:#5ec39a; --down:#e0796e;
+  --paper:#14130f; --panel:#1c1a15; --ink:#f0ebdd; --muted:#9a9284;
+  --line:#2e2b23; --hair:#26241d;
+  --accent:#e8be2a; --accent-ink:#e8be2a; --accent-wash:#332b12;
+  --ball:#d4685c; --turf:#6aa77f; --bar:#3b372d;
 }}
 :root[data-theme="dark"]{
-  --bg:#131311; --panel:#1c1b19; --ink:#f2efe8; --muted:#9d9890; --line:#2e2c28;
-  --accent:#5ec39a; --accent-soft:#1e3b31; --bar:#453f36; --up:#5ec39a; --down:#e0796e;
+  --paper:#14130f; --panel:#1c1a15; --ink:#f0ebdd; --muted:#9a9284;
+  --line:#2e2b23; --hair:#26241d;
+  --accent:#e8be2a; --accent-ink:#e8be2a; --accent-wash:#332b12;
+  --ball:#d4685c; --turf:#6aa77f; --bar:#3b372d;
 }
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);
-  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
-  margin:0;padding:0 20px 80px}
-.wrap{max-width:1000px;margin:0 auto}
-header{padding:56px 0 28px;border-bottom:1px solid var(--line)}
-h1{font-size:clamp(30px,5vw,46px);margin:0 0 10px;letter-spacing:-.025em;font-weight:640}
-.sub{color:var(--muted);font-size:17px;max-width:62ch;margin:0}
-.kbd{font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--accent-soft);
-  color:var(--accent);padding:2px 7px;border-radius:5px}
-.stats{display:flex;flex-wrap:wrap;gap:26px;margin:26px 0 0}
-.stat b{display:block;font-size:24px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.stat span{color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.07em}
-h2{font-size:20px;margin:44px 0 6px;letter-spacing:-.015em}
-.note{color:var(--muted);font-size:14px;margin:0 0 18px;max-width:70ch}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.controls{display:flex;gap:10px;flex-wrap:wrap;padding:14px;border-bottom:1px solid var(--line)}
-.settle{margin:26px 0 8px;padding:20px}
-.pickers{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--serif);
+  margin:0;padding:0 24px 90px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto}
+
+/* ---- masthead ---------------------------------------------------------- */
+header{padding:52px 0 0}
+.eyebrow{font:600 11px/1 var(--sans);text-transform:uppercase;letter-spacing:.18em;
+  color:var(--muted);display:flex;align-items:center;gap:10px;margin:0 0 26px}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+.eyebrow b{color:var(--ink);font-weight:700}
+h1{font:400 clamp(44px,7.5vw,78px)/0.95 var(--serif);margin:0 0 18px;
+  letter-spacing:-.02em}
+h1 em{font-style:italic;color:var(--accent-ink)}
+.sub{font-size:19px;line-height:1.55;max-width:34em;margin:0;color:var(--ink)}
+.sub b{font-weight:600;box-shadow:inset 0 -.5em 0 var(--accent-wash)}
+.rule{height:1px;background:var(--line);margin:30px 0 0}
+.rule.dbl{height:3px;background:none;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  border-top:1px solid var(--line);border-bottom:3px double var(--line);
+  margin:28px 0 0}
+.stat{padding:16px 20px 15px;border-left:1px solid var(--hair)}
+.stat:first-child{border-left:0;padding-left:0}
+.stat b{display:block;font:600 28px/1 var(--sans);font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;margin-bottom:6px}
+.stat span{color:var(--muted);font:600 10.5px/1 var(--sans);text-transform:uppercase;
+  letter-spacing:.13em}
+
+/* ---- section headings -------------------------------------------------- */
+h2{font:400 30px/1.15 var(--serif);margin:64px 0 8px;letter-spacing:-.015em}
+.note{color:var(--muted);font-size:15.5px;margin:0 0 20px;max-width:38em}
+.note b{color:var(--ink);font-weight:600}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:3px}
+
+/* ---- the settler ------------------------------------------------------- */
+.settle{margin:34px 0 0;padding:0;overflow:hidden}
+.pickers{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;padding:20px 22px;
+  border-bottom:1px solid var(--line);background:var(--paper)}
 .pick{flex:1;min-width:170px}
-.pick label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--muted);margin-bottom:5px;font-weight:600}
+.pick label,.ctl label{display:block;font:600 10.5px/1 var(--sans);text-transform:uppercase;
+  letter-spacing:.13em;color:var(--muted);margin-bottom:7px}
 .pick input{width:100%}
-.vs{color:var(--muted);font-size:13px;padding-bottom:10px}
-.verdict{margin-top:18px}
-.vhead{font-size:19px;font-weight:650;letter-spacing:-.015em;margin:0 0 4px}
-.vsub{color:var(--muted);font-size:13.5px;margin:0 0 14px}
-.vrow{display:flex;gap:14px;flex-wrap:wrap}
-.vcard{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line);
-  border-radius:10px;padding:13px 15px}
-.vcard b{display:block;font-size:15px;margin-bottom:2px}
-.vcard .big{font-size:26px;font-weight:700;color:var(--accent);
-  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.vcard small{color:var(--muted);font-size:12px;display:block;margin-top:3px}
-.win{border-color:var(--accent);background:var(--accent-soft)}
-.tie{padding:11px 14px;background:var(--accent-soft);border-radius:9px;
-  color:var(--accent);font-size:13.5px;margin-top:12px}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:12px 14px 0}
-.tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);
-  padding:6px 13px;border-radius:20px;font:inherit;font-size:13px;cursor:pointer}
-.tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
-input,select{background:var(--bg);border:1px solid var(--line);color:var(--ink);
-  padding:8px 11px;border-radius:8px;font-size:14px;font-family:inherit}
-input{flex:1;min-width:190px}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{padding:9px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
-th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600;
-  font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;text-align:right;cursor:pointer;
-  user-select:none}
-th:first-child,td:first-child{text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-th:nth-child(2),td:nth-child(2){text-align:left}
-td{font-variant-numeric:tabular-nums}
-tbody tr:hover{background:var(--accent-soft)}
-.nm{font-weight:600}
-.ctry{color:var(--muted);font-size:12px;margin-left:6px}
-.yr{color:var(--muted);font-size:12px}
-.pv{font-weight:700;color:var(--accent)}
-.citrack{position:relative;display:inline-block;width:170px;height:9px;
-  background:var(--bar);opacity:.55;border-radius:5px;vertical-align:middle}
-.ci{position:absolute;top:0;height:100%;background:var(--accent);opacity:.42;border-radius:5px}
-.ci i{position:absolute;top:-3px;width:2.5px;height:15px;background:var(--accent);
-  border-radius:2px;opacity:1}
-.up{color:var(--up)} .down{color:var(--down)}
-.bars{display:flex;align-items:flex-end;gap:5px;height:150px;padding:16px 14px 0}
-.bars div{flex:1;background:var(--accent);border-radius:3px 3px 0 0;opacity:.8;position:relative}
-.bars div:hover{opacity:1}
-.blabels{display:flex;gap:5px;padding:6px 14px 14px;color:var(--muted);font-size:10.5px}
+.vs{color:var(--muted);font:italic 17px var(--serif);padding-bottom:9px}
+.verdict{padding:22px}
+.vhead{font:400 27px/1.2 var(--serif);letter-spacing:-.015em;margin:0 0 6px}
+.vsub{color:var(--muted);font-size:15px;margin:0 0 20px;max-width:44em}
+.vrow{display:flex;gap:16px;flex-wrap:wrap}
+.vcard{flex:1;min-width:210px;padding:14px 16px 15px;border-left:3px solid var(--line)}
+.vcard b{display:block;font:600 15px var(--sans);margin-bottom:6px;letter-spacing:.01em}
+.vcard .big{font:600 44px/1 var(--sans);font-variant-numeric:tabular-nums;
+  letter-spacing:-.03em}
+.vcard small{color:var(--muted);font:12.5px/1.5 var(--sans);display:block;margin-top:8px}
+.win{border-left-color:var(--accent)}
+.win .big{color:var(--accent-ink)}
+.tie{padding:13px 16px;border-left:3px solid var(--accent);background:var(--accent-wash);
+  font-size:14.5px;margin-top:18px;border-radius:0 3px 3px 0}
+/* Both intervals on one scale: the actual argument, drawn. */
+.cmp{margin-top:20px;padding-top:18px;border-top:1px solid var(--hair)}
+.cmprow{display:grid;grid-template-columns:minmax(96px,auto) 1fr;gap:14px;
+  align-items:center;margin-bottom:11px}
+.cmprow span{font:600 12px var(--sans);color:var(--muted);text-align:right;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmptrack{position:relative;height:22px}
+.cmptrack::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+  background:var(--hair)}
+.cmpband{position:absolute;top:6px;height:10px;background:var(--bar);opacity:.5;
+  border-radius:2px}
+.cmprow.w .cmpband{background:var(--accent);opacity:.55}
+.cmpdot{position:absolute;top:2px;width:3px;height:18px;background:var(--ink);
+  border-radius:1px;transform:translateX(-1.5px)}
+.cmprow.w .cmpdot{background:var(--accent-ink)}
+
+/* ---- controls ---------------------------------------------------------- */
+input,select{background:var(--paper);border:1px solid var(--line);color:var(--ink);
+  padding:9px 12px;border-radius:3px;font:15px var(--sans)}
+input::placeholder{color:var(--muted);opacity:.75}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;
+  border-color:var(--accent)}
+select{appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+    linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 16px) calc(50% + 1px),calc(100% - 11px) calc(50% + 1px);
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.controls{display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;
+  border-bottom:1px solid var(--line);align-items:center}
+.controls input{flex:1;min-width:190px}
+
+/* ---- era chart --------------------------------------------------------- */
+.chart{padding:34px 22px 0 56px;position:relative}
+.plot{position:relative;height:210px;display:flex;align-items:flex-end;gap:6px;
+  border-bottom:1.5px solid var(--ink)}
+/* The grid must outrank `.plot div` below, which sets position:relative. */
+.plot .grid{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+.grid i{position:absolute;left:0;right:0;height:1px;background:var(--hair)}
+.grid u{position:absolute;left:0;transform:translate(-100%,-50%);padding-right:12px;
+  font:11px var(--sans);font-variant-numeric:tabular-nums;color:var(--muted);
+  text-decoration:none;line-height:1}
+.plot div:not(.grid){flex:1;background:var(--bar);position:relative;
+  border-radius:2px 2px 0 0;transition:background .12s}
+.plot div:not(.grid):hover{background:var(--accent)}
+.plot div:not(.grid)::after{content:attr(data-v);position:absolute;top:-19px;left:0;right:0;
+  text-align:center;font:600 11px var(--sans);font-variant-numeric:tabular-nums;
+  color:var(--muted);opacity:0;transition:opacity .12s}
+.plot div:not(.grid):hover::after{opacity:1}
+.ylab{position:absolute;left:56px;top:10px;font:600 10.5px var(--sans);
+  text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.blabels{display:flex;gap:6px;padding:9px 22px 20px 56px;color:var(--muted);
+  font:11px var(--sans);font-variant-numeric:tabular-nums}
 .blabels span{flex:1;text-align:center}
-footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
-  color:var(--muted);font-size:13px}
-code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--accent-soft);
-  padding:1.5px 5px;border-radius:4px}
+
+/* ---- tabs -------------------------------------------------------------- */
+.tabs{display:flex;gap:0;flex-wrap:wrap;padding:0 16px;border-bottom:1px solid var(--line);
+  background:var(--paper)}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+  padding:13px 14px;font:600 13px var(--sans);cursor:pointer;margin-bottom:-1px}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---- table ------------------------------------------------------------- */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font:14px var(--sans)}
+th,td{padding:10px 12px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--hair)}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);
+  font:600 10.5px var(--sans);text-transform:uppercase;letter-spacing:.12em;
+  cursor:pointer;user-select:none;border-bottom:1px solid var(--ink);z-index:2}
+th:hover{color:var(--ink)}
+th.sorted{color:var(--ink)}
+th.sorted::after{content:" \\2193";font-size:11px}
+th.sorted.asc::after{content:" \\2191"}
+th:first-child,td:first-child{text-align:right;color:var(--muted);
+  font-variant-numeric:tabular-nums;padding-left:22px;width:1%}
+th:nth-child(2),td:nth-child(2){text-align:left}
+td:last-child{padding-right:22px}
+td{font-variant-numeric:tabular-nums;color:var(--muted)}
+tbody tr:hover{background:var(--accent-wash)}
+.nm{font-weight:600;color:var(--ink);font-size:14.5px}
+.ctry{color:var(--muted);font:600 10.5px var(--sans);letter-spacing:.09em;margin-left:7px}
+.yr{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px}
+.pv{font-weight:700;color:var(--ink);font-size:15px}
+.citrack{position:relative;display:inline-block;width:150px;height:16px;
+  vertical-align:middle}
+.citrack::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+  background:var(--hair)}
+.ci{position:absolute;top:6px;height:4px;background:var(--bar);border-radius:2px}
+.ci i{position:absolute;top:-4px;width:2px;height:12px;background:var(--ink);
+  border-radius:1px}
+tbody tr:hover .ci{background:var(--accent)}
+.up{color:var(--turf);font-weight:600} .down{color:var(--ball);font-weight:600}
+.empty{text-align:center;padding:44px 20px;color:var(--muted);font:16px var(--serif)}
+
+/* ---- footer ------------------------------------------------------------ */
+footer{margin-top:66px;padding-top:24px;border-top:3px double var(--line);
+  color:var(--muted);font-size:14.5px;line-height:1.65;max-width:44em}
+footer b{color:var(--ink)}
+code{font:12.5px var(--mono);background:var(--accent-wash);color:var(--accent-ink);
+  padding:2px 6px;border-radius:2px}
+@media (max-width:640px){
+  body{padding:0 16px 60px}
+  .stat{border-left:0;padding:12px 0}
+  .stats{border-bottom-width:1px}
+}
 """
 
 
@@ -262,14 +365,15 @@ def render(payload: dict) -> str:
     return f"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Howzat — Era-Adjusted Cricket Ratings</title>
+<title>Howzat: Era-Adjusted Cricket Ratings</title>
 <style>{CSS}</style>
 <div class="wrap">
 <header>
-  <h1>Settle it.</h1>
-  <p class="sub">Pick two players. Get a verdict, the number that decides it, and an
-  honest answer when the data can't separate them. Every comparison is
-  <b>era-adjusted</b>, so 1930 and 2026 are finally on one scale.</p>
+  <p class="eyebrow"><b>Howzat</b> Era-adjusted cricket ratings</p>
+  <h1>Settle <em>it.</em></h1>
+  <p class="sub">Pick two players. You get a verdict and the number behind it. When the
+  data cannot separate them it says so. Every comparison is <b>era-adjusted</b>, so
+  1930 and 2026 sit on one scale.</p>
   <div class="stats">
     <div class="stat"><b>{m['all_innings']:,}</b><span>innings analysed</span></div>
     <div class="stat"><b>{m['span']}</b><span>every Test ever</span></div>
@@ -296,14 +400,21 @@ def render(payload: dict) -> str:
 </div>
 
 <h2>How hard was it to score?</h2>
-<p class="note">Runs per dismissal by decade, across every Test batter. This spans
-<b>1.96×</b> — which is exactly what raw batting average ignores, and what CRI+ divides out.</p>
-<div class="panel"><div class="bars" id="bars"></div><div class="blabels" id="blabels"></div></div>
+<p class="note">Runs per dismissal by decade, across every Test batter. The easiest decade
+to bat in was <b>1.96×</b> the hardest. Raw batting average ignores all of that. CRI+
+divides it out.</p>
+<div class="panel">
+  <div class="chart">
+    <div class="ylab">Runs per dismissal</div>
+    <div class="plot" id="bars"><div class="grid" id="grid"></div></div>
+  </div>
+  <div class="blabels" id="blabels"></div>
+</div>
 
 <h2>The ratings</h2>
-<p class="note">Bars show the <b>95% interval</b>. A short career gives a wide bar — that is the
-point. <code>Δ</code> is how many places a batter moves versus raw batting average;
-positive means the era adjustment promoted them. Click any column to sort.</p>
+<p class="note">Bars show the <b>95% interval</b>. Short careers get wide bars. That is
+deliberate. <code>Δ</code> counts the places a batter moves against raw batting average.
+Positive means the era adjustment promoted them. Click any column to sort.</p>
 <div class="panel">
   <div class="tabs" id="tabs"></div>
   <div class="controls">
@@ -330,16 +441,17 @@ positive means the era adjustment promoted them. Click any column to sort.</p>
 </div>
 
 <footer>
-  <b>Method.</b> Innings runs modelled as Geometric with a log link; not-outs enter as
-  right-censored observations rather than being averaged in. Player skill carries a Gaussian
-  prior whose strength is set by empirical Bayes (λ = 1.90), so short careers shrink toward the
-  mean. The era term is <i>fixed from observed scoring</i>, not fitted — estimated freely it came
-  out anti-correlated with reality (r = −0.21), because only 12.7% of players span three decades
-  and era is confounded with skill. Fitted by penalised MLE with analytic gradients.
+  <b>Method.</b> Innings runs are modelled as Geometric with a log link. Not-outs enter as
+  right-censored observations instead of being averaged in. Player skill carries a Gaussian
+  prior whose strength is set by empirical Bayes (λ = 1.90), so short careers shrink toward
+  the mean. The era term is <i>fixed from observed scoring</i> rather than fitted. Estimated
+  freely it came out anti-correlated with reality (r = −0.21). Only 12.7% of players span
+  three decades, so the likelihood cannot tell era and skill apart. Fitted by penalised MLE
+  with analytic gradients.
   <br><br>
-  CRI+ measures <b>dominance over contemporaries</b>, not absolute skill across eras — the same
-  claim baseball's <code>+</code> metrics make, and the strongest this data supports.
-  Data: ESPNcricinfo Statsguru.
+  CRI+ measures <b>dominance over contemporaries</b>. It does not measure absolute skill
+  across eras. That is the same claim baseball's <code>+</code> metrics make and the
+  strongest thing this data supports. Data: ESPNcricinfo Statsguru.
 </footer>
 </div>
 
@@ -350,11 +462,25 @@ let DATA = VIEWS[VIEW].rows;
 const ERAS = {json.dumps(payload["eras"], separators=(",", ":"))};
 
 const bars = document.getElementById('bars'), blab = document.getElementById('blabels');
+// Bars scaled to the largest value make every chart look the same. Scale to a
+// round number above the max instead, and label the axis, so the 1.96x spread
+// is something you can read off rather than take on trust.
 const mx = Math.max(...ERAS.map(e => e.avg));
+const step = mx > 60 ? 20 : mx > 30 ? 10 : 5;
+// Not `top`: window.top already owns that name and redeclaring it kills the script.
+const axisTop = Math.ceil(mx / step) * step;
+const grid = document.getElementById('grid');
+for (let v = 0; v <= axisTop; v += step) {{
+  const y = 100 - v / axisTop * 100;
+  const line = document.createElement('i'); line.style.top = y + '%';
+  const lab = document.createElement('u'); lab.style.top = y + '%'; lab.textContent = v;
+  grid.append(line, lab);
+}}
 ERAS.forEach(e => {{
   const d = document.createElement('div');
-  d.style.height = (e.avg / mx * 100) + '%';
-  d.title = e.d + 's — ' + e.avg + ' runs per dismissal (' + e.n.toLocaleString() + ' innings)';
+  d.style.height = (e.avg / axisTop * 100) + '%';
+  d.dataset.v = e.avg;
+  d.title = e.d + 's: ' + e.avg + ' runs per dismissal (' + e.n.toLocaleString() + ' innings)';
   bars.appendChild(d);
   const s = document.createElement('span');
   s.textContent = String(e.d).slice(2) + "s";
@@ -418,10 +544,14 @@ function draw() {{
     return sortAsc ? c : -c;
   }});
 
+  document.querySelectorAll('th[data-k]').forEach(th => {{
+    th.classList.toggle('sorted', th.dataset.k === sortK);
+    th.classList.toggle('asc', th.dataset.k === sortK && sortAsc);
+  }});
+
   const body = document.getElementById('rows');
   if (!rows.length) {{
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:26px;
-      color:var(--muted)">No players match those filters in
+    body.innerHTML = `<tr><td colspan="8" class="empty">No players match those filters in
       ${{VIEWS[VIEW].label}}. Clear the search or lower the innings filter.</td></tr>`;
     return;
   }}
@@ -479,6 +609,23 @@ function card(p, won) {{
   </div>`;
 }}
 
+// The overlap is the whole claim, so draw it on one shared scale rather than
+// leaving the reader to compare two pairs of numbers in a sentence.
+function intervals(hi, lo, separated) {{
+  const a = Math.min(hi.lo, lo.lo), b = Math.max(hi.hi, lo.hi);
+  const pad = (b - a) * 0.08 || 1;
+  const L = a - pad, R = b + pad;
+  const at = v => (v - L) / (R - L) * 100;
+  const row = (p, won) => `<div class="cmprow ${{won ? 'w' : ''}}">
+      <span>${{p.n}}</span>
+      <div class="cmptrack" title="95% interval ${{p.lo.toFixed(0)}}\\u2013${{p.hi.toFixed(0)}}">
+        <div class="cmpband" style="left:${{at(p.lo).toFixed(2)}}%;
+             width:${{(at(p.hi) - at(p.lo)).toFixed(2)}}%"></div>
+        <div class="cmpdot" style="left:${{at(p.p).toFixed(2)}}%"></div>
+      </div></div>`;
+  return `<div class="cmp">${{row(hi, separated)}}${{row(lo, false)}}</div>`;
+}}
+
 function settle() {{
   const key = pf.value || BATVIEWS[0][0];
   const a = findPlayer(document.getElementById('pa').value, key);
@@ -501,17 +648,18 @@ function settle() {{
   // The whole point: only call a winner when the intervals do not overlap.
   const separated = hi.lo > lo.hi;
   const head = separated
-    ? `${{hi.n}} — and it is not close.`
+    ? `${{hi.n}}. Not close.`
     : `Too close to call.`;
   const sub = separated
     ? `${{hi.n}}'s 95% interval (${{hi.lo.toFixed(0)}}–${{hi.hi.toFixed(0)}}) clears
-       ${{lo.n}}'s entirely (${{lo.lo.toFixed(0)}}–${{lo.hi.toFixed(0)}}), so the gap is real.`
-    : `Their 95% intervals overlap, so this data cannot separate them.
-       ${{hi.n}} rates higher, but not by enough to be sure.`;
+       ${{lo.n}}'s entirely (${{lo.lo.toFixed(0)}}–${{lo.hi.toFixed(0)}}). The gap is real.`
+    : `Their 95% intervals overlap. This data cannot separate them.
+       ${{hi.n}} rates higher but not by enough to be sure.`;
   out.innerHTML = `<p class="vhead">${{head}}</p><p class="vsub">${{sub}}</p>
     <div class="vrow">${{card(hi, separated)}}${{card(lo, false)}}</div>` +
-    (separated ? '' : `<div class="tie">Saying "I don't know" is a result.
-       An overlap means the evidence is genuinely inconclusive.</div>`);
+    intervals(hi, lo, separated) +
+    (separated ? '' : `<div class="tie">An overlap is a result. The evidence cannot
+       separate these two, and saying so is more honest than inventing a ranking.</div>`);
 }}
 
 function refreshNames() {{
