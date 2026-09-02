@@ -37,7 +37,9 @@ jobs:
           python3 - <<'PY'
           import pathlib, sys
           h = pathlib.Path("out/index.html").read_text()
-          need = ["Settle it.", "Test batting", "ODI batting", "T20I batting",
+          # "Settle" not "Settle it.": the masthead italicises the second word,
+          # so the headline is markup ("Settle <em>it.</em>") not one string.
+          need = ["Settle", "Test batting", "ODI batting", "T20I batting",
                   "Women's ODI", "Women's T20I", "Women's Test",
                   "Test bowling", "ODI bowling", "T20I bowling"]
           missing = [n for n in need if n not in h]
