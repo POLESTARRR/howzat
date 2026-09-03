@@ -185,9 +185,15 @@ class Debate:
         turn.text = self.p.text(resp)
         return turn
 
-    def run(self, question: str) -> Transcript:
+    def run(self, question: str, on_turn=None) -> Transcript:
+        """`on_turn`, if given, is called as on_turn(role) right BEFORE each
+        agent starts (statistician/historian/skeptic/judge) -- lets a caller
+        show live progress instead of one long silent wait for all four
+        sequential calls. Optional and stateless: the CLI doesn't pass one."""
         tr = Transcript(question=question)
 
+        if on_turn:
+            on_turn("statistician")
         tr.turns.append(
             self._agent(
                 "statistician",
@@ -195,6 +201,8 @@ class Debate:
                 tr,
             )
         )
+        if on_turn:
+            on_turn("historian")
         tr.turns.append(
             self._agent(
                 "historian",
@@ -203,6 +211,8 @@ class Debate:
                 tr,
             )
         )
+        if on_turn:
+            on_turn("skeptic")
         tr.turns.append(
             self._agent(
                 "skeptic",
@@ -215,6 +225,8 @@ class Debate:
         # Only the judge is escalated to the strong tier. If it fails outright,
         # keep the transcript: the panel's evidence is the expensive part and
         # is still worth returning.
+        if on_turn:
+            on_turn("judge")
         judge_prompt = (
             f"The question: {question}\n\nPanel:\n{tr.panel_block()}\n\n"
             f"Evidence gathered:\n{tr.evidence_block()}\n\nDeliver the verdict as JSON."

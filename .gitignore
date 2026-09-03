@@ -11,6 +11,10 @@ out/*.log
 __pycache__/
 *.pyc
 .DS_Store
+.venv/
+venv/
+.test_venv/
+.streamlit_venv/
 
 
 # Keep processed parquet (3MB): lets a cloud agent work without re-scraping
