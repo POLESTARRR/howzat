@@ -60,3 +60,101 @@ def run_command(command: str, timeout: int = 300) -> dict:
         return {"exit_code": -1, "stdout": "", "stderr": f"command timed out after {timeout}s"}
     # Tool results get embedded in the next prompt; keep them bounded.
     return {"exit_code": proc.returncode, "stdout": proc.stdout[-4000:], "stderr": proc.stderr[-4000:]}
+
+
+def finish_task(summary: str) -> str:
+    """The model calls this to end its turn loop. agent_run.py's loop
+    watches for this specific tool name; this function just echoes the
+    summary back so dispatch()'s uniform {"result": ...} shape still holds.
+    """
+    return summary
+
+
+_STR = {"type": "string"}
+_INT = {"type": "integer"}
+
+TOOL_SCHEMAS = [
+    {
+        "name": "read_file",
+        "description": "Read a file's contents. Path is relative to the repo root.",
+        "parameters": {
+            "type": "object",
+            "properties": {"path": _STR},
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "write_file",
+        "description": (
+            "Overwrite a file's ENTIRE contents with `content`. Creates the "
+            "file (and any parent directories) if it doesn't exist. Always "
+            "pass the file's complete new text, never a diff or a partial "
+            "snippet -- anything you don't include is deleted."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"path": _STR, "content": _STR},
+            "required": ["path", "content"],
+        },
+    },
+    {
+        "name": "run_command",
+        "description": (
+            "Run a shell command in the repo root, e.g. to run tests or "
+            "inspect a file. Returns exit code, stdout and stderr."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": _STR,
+                "timeout": dict(_INT, description="Seconds, default 300"),
+            },
+            "required": ["command"],
+        },
+    },
+    {
+        "name": "finish_task",
+        "description": (
+            "Call this exactly once, when the task is complete or you are "
+            "stopping. Ending the run any other way (plain text, silence) "
+            "does not work -- you must call this tool."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "summary": dict(
+                    _STR,
+                    description="One or two sentences: what changed and why, or why you stopped.",
+                ),
+            },
+            "required": ["summary"],
+        },
+    },
+]
+
+TOOLS = {
+    "read_file": read_file,
+    "write_file": write_file,
+    "run_command": run_command,
+    "finish_task": finish_task,
+}
+
+
+def dispatch(name: str, args: dict) -> dict:
+    """Runs one tool call from the model, never raising into the loop.
+
+    Mirrors src/tools.py's dispatch() exactly: {"result": ...} on success,
+    {"error": ...} on any failure, so a bad call becomes something the model
+    can read and react to next turn instead of crashing the run.
+    """
+    fn = TOOLS.get(name)
+    if fn is None:
+        return {"error": f"unknown tool {name!r}", "available": list(TOOLS)}
+    try:
+        return {"result": fn(**args)}
+    except TypeError as e:
+        return {"error": f"bad arguments for {name}: {e}"}
+    except ToolError as e:
+        return {"error": str(e)}
+    except Exception as e:  # noqa: BLE001 - a broken tool must not kill the run
+        return {"error": f"{type(e).__name__}: {e}"}

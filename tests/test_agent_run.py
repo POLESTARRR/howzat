@@ -68,5 +68,32 @@ class TestRunCommand(unittest.TestCase):
         self.assertIn("Howzat backlog", out["stdout"])
 
 
+class TestDispatch(unittest.TestCase):
+    def test_dispatch_wraps_success_in_result(self):
+        out = agent_tools.dispatch("read_file", {"path": "BACKLOG.md"})
+        self.assertIn("Howzat backlog", out["result"])
+
+    def test_dispatch_unknown_tool(self):
+        out = agent_tools.dispatch("nonexistent", {})
+        self.assertIn("error", out)
+        self.assertIn("unknown tool", out["error"])
+
+    def test_dispatch_bad_arguments(self):
+        out = agent_tools.dispatch("read_file", {"wrong_kwarg": "x"})
+        self.assertIn("error", out)
+
+    def test_dispatch_tool_error_becomes_error_key_not_exception(self):
+        out = agent_tools.dispatch("read_file", {"path": "../../etc/passwd"})
+        self.assertIn("error", out)
+
+    def test_finish_task_returns_summary(self):
+        out = agent_tools.dispatch("finish_task", {"summary": "did the thing"})
+        self.assertEqual(out["result"], "did the thing")
+
+    def test_tool_schemas_cover_every_tool(self):
+        names = {s["name"] for s in agent_tools.TOOL_SCHEMAS}
+        self.assertEqual(names, {"read_file", "write_file", "run_command", "finish_task"})
+
+
 if __name__ == "__main__":
     unittest.main()
