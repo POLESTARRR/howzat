@@ -147,5 +147,42 @@ class TestNextBacklogItem(unittest.TestCase):
         agent_run.next_backlog_item()
 
 
+class TestSelectTask(unittest.TestCase):
+    def test_failing_tests_take_priority(self):
+        calls = []
+
+        def fake_run(command, timeout=300):
+            calls.append(command)
+            if "unittest discover" in command:
+                return {"exit_code": 1, "stdout": "FAILED test_x", "stderr": ""}
+            return {"exit_code": 0, "stdout": "", "stderr": ""}
+
+        task = agent_run.select_task(run=fake_run)
+        self.assertIn("Fix this failing test suite", task)
+        self.assertIn("FAILED test_x", task)
+        # validate.py should never even run if the test suite already failed.
+        self.assertEqual(len(calls), 1)
+
+    def test_failing_validate_when_tests_pass(self):
+        def fake_run(command, timeout=300):
+            if "unittest discover" in command:
+                return {"exit_code": 0, "stdout": "", "stderr": ""}
+            if "validate.py" in command:
+                return {"exit_code": 1, "stdout": "3/8 checks passed", "stderr": ""}
+            raise AssertionError(f"unexpected command: {command}")
+
+        task = agent_run.select_task(run=fake_run)
+        self.assertIn("Fix this failing validation check", task)
+        self.assertIn("3/8 checks passed", task)
+
+    def test_falls_back_to_backlog_when_checks_pass(self):
+        def fake_run(command, timeout=300):
+            return {"exit_code": 0, "stdout": "", "stderr": ""}
+
+        task = agent_run.select_task(run=fake_run)
+        # Whatever's actually next in the real BACKLOG.md right now.
+        self.assertEqual(task, agent_run.next_backlog_item())
+
+
 if __name__ == "__main__":
     unittest.main()

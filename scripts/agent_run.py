@@ -23,6 +23,23 @@ import agent_tools  # noqa: E402
 _NEXT_ITEM_RE = re.compile(r"^\d+\.\s+(.*)$")
 
 
+def select_task(run=agent_tools.run_command) -> str | None:
+    """A failing check first, else the next unchecked BACKLOG.md item.
+
+    `run` is injected so tests don't have to run the real (slow) suite --
+    defaults to the real agent_tools.run_command for actual use.
+    """
+    tests = run("PYTHONPATH=src python3 -m unittest discover -s tests")
+    if tests["exit_code"] != 0:
+        return "Fix this failing test suite:\n\n" + (tests["stdout"] + tests["stderr"])[-4000:]
+
+    validate = run("PYTHONPATH=src python3 src/validate.py")
+    if validate["exit_code"] != 0:
+        return "Fix this failing validation check:\n\n" + (validate["stdout"] + validate["stderr"])[-4000:]
+
+    return next_backlog_item()
+
+
 def next_backlog_item(text: str | None = None) -> str | None:
     """First unchecked line under BACKLOG.md's '## Next' heading, or None
     if the heading is missing or every item under it is [DONE].
