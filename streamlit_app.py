@@ -58,14 +58,22 @@ h1 { font-family:var(--serif) !important; font-weight:400 !important;
      color:var(--muted) !important; }
 p, li, label, .stMarkdown { font-family:var(--serif); color:var(--ink); }
 
-[data-testid="stTextInput"] input {
+[data-testid="stTextInputField"], [data-testid="stTextInput"] input {
   font-family:var(--serif) !important; background:var(--panel) !important;
   border:1px solid var(--line) !important; color:var(--ink) !important;
 }
-[data-testid="baseButton-primary"] {
+[data-testid="stTextInputField"]::placeholder { color:var(--muted) !important; opacity:1 !important; }
+
+/* Confirmed against the actual installed frontend bundle's testid template
+   (`stBaseButton-${kind}`), not guessed -- a prior version of this selector
+   was missing the "st" prefix and silently matched nothing. */
+[data-testid="stBaseButton-primary"] {
   background:var(--accent-wash) !important; color:var(--accent-ink) !important;
   border:1px solid var(--accent-ink) !important; font-family:var(--sans) !important;
   font-weight:600 !important;
+}
+[data-testid="stBaseButton-primary"]:disabled {
+  opacity:.45 !important; border-color:var(--line) !important; color:var(--muted) !important;
 }
 [data-testid="stAlertContainer"] { font-family:var(--sans) !important; }
 hr { border-color:var(--line) !important; }
