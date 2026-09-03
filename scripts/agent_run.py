@@ -10,6 +10,7 @@ Run directly: PYTHONPATH=src python3 scripts/agent_run.py
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -101,3 +102,91 @@ def verify(run=agent_tools.run_command) -> tuple[bool, str]:
         return False, "\n".join(log)
 
     return True, "\n".join(log)
+
+
+MAX_TURNS = 25
+MAX_REPAIR_TURNS = 3
+STALL_LIMIT = 2
+
+SYSTEM_PROMPT = """You are working autonomously on Howzat, an era-adjusted \
+cricket ratings project. You have exactly ONE task this run: the one given \
+below. Do only that task, then call finish_task.
+
+Known bug shapes to avoid reintroducing (all were silent -- plausible \
+numbers that were wrong, not crashes):
+- Fixed column positions instead of mapping columns by header name.
+- Name-keyed player identity instead of Statsguru's player_id.
+- Era or opposition as free parameters instead of fixed, time-aware offsets.
+- Hand-picked shrinkage instead of empirical Bayes.
+
+Validation standard: a rating that disagrees with settled cricket opinion is \
+broken, not brave (Bradman first in Tests, exact published career wicket \
+totals). Every reported effect needs a 95% confidence interval; never a bare \
+number.
+
+Use write_file with the file's COMPLETE new contents, never a diff or a \
+partial snippet. Use run_command to run tests as you go. Call finish_task \
+exactly once, when the task is done or you are giving up on it -- plain \
+text alone never ends the run."""
+
+
+def run_agent_loop(
+    task: str,
+    gateway,
+    verify=verify,
+    max_turns: int = MAX_TURNS,
+    max_repair_turns: int = MAX_REPAIR_TURNS,
+) -> tuple[bool, str]:
+    """Bounded tool-calling loop for one task.
+
+    Returns (verified, summary_or_reason). `verified` False means: no
+    landable change came out of this run (stalled, ran out of turns, or
+    verify() kept failing after every repair attempt) -- the caller should
+    discard any working-tree changes, not commit them.
+    """
+    history: list[dict] = []
+    current = f"Your task:\n\n{task}"
+    stalls = 0
+    repairs_left = max_repair_turns
+
+    for _ in range(max_turns):
+        resp = gateway.generate(
+            current, tier="strong", system=SYSTEM_PROMPT,
+            tools=agent_tools.TOOL_SCHEMAS, history=history,
+        )
+        calls = gateway.calls(resp)
+
+        if not calls:
+            stalls += 1
+            if stalls >= STALL_LIMIT:
+                return False, f"stalled: no tool call for {STALL_LIMIT} turns in a row"
+            history = history + [{"role": "user", "parts": [{"text": current}]}]
+            current = "You must call a tool, including finish_task if you are done. Plain text alone does not end the run."
+            continue
+        stalls = 0
+
+        results = []
+        finish_summary = None
+        for call in calls:
+            name = call.get("name", "")
+            args = call.get("args", {}) or {}
+            out = agent_tools.dispatch(name, args)
+            results.append(f"{name}({json.dumps(args, sort_keys=True, default=str)}) -> {json.dumps(out, default=str)[:4000]}")
+            if name == "finish_task":
+                finish_summary = str(args.get("summary", ""))
+
+        if finish_summary is not None:
+            passed, log = verify()
+            if passed:
+                return True, finish_summary
+            if repairs_left <= 0:
+                return False, f"verification failed after all repair attempts:\n{log[-2000:]}"
+            repairs_left -= 1
+            history = history + [{"role": "user", "parts": [{"text": current}]}]
+            current = f"finish_task was called, but verification failed:\n{log[-3000:]}\n\nFix it, then call finish_task again."
+            continue
+
+        history = history + [{"role": "user", "parts": [{"text": current}]}]
+        current = "Tool results:\n" + "\n".join(results)
+
+    return False, f"turn budget exhausted ({max_turns} turns) without a verified finish_task"

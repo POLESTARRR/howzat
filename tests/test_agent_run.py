@@ -21,6 +21,41 @@ import agent_tools  # noqa: E402
 import agent_run  # noqa: E402
 
 
+class FakeGateway:
+    """Scripted stand-in for src.gateway.Gateway, shaped the same way
+    (generate/text/calls) so run_agent_loop can't tell the difference.
+    `script` is a list of responses, one consumed per .generate() call.
+    """
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.calls_made = 0
+
+    def generate(self, prompt, *, tier="cheap", system=None, tools=None, history=None, **_):
+        self.calls_made += 1
+        if not self.script:
+            raise AssertionError("FakeGateway script exhausted")
+        return self.script.pop(0)
+
+    @staticmethod
+    def text(resp):
+        parts = resp.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        return "".join(p.get("text", "") for p in parts).strip()
+
+    @staticmethod
+    def calls(resp):
+        parts = resp.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        return [p["functionCall"] for p in parts if "functionCall" in p]
+
+
+def _fc(name, args):
+    return {"candidates": [{"content": {"parts": [{"functionCall": {"name": name, "args": args}}]}}]}
+
+
+def _txt(s):
+    return {"candidates": [{"content": {"parts": [{"text": s}]}}]}
+
+
 class TestPathSafety(unittest.TestCase):
     def test_read_file_reads_relative_to_repo_root(self):
         content = agent_tools.read_file("BACKLOG.md")
@@ -235,6 +270,59 @@ class TestVerify(unittest.TestCase):
             self.assertFalse(passed)
         finally:
             (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+
+
+class TestRunAgentLoop(unittest.TestCase):
+    def test_finishes_and_verifies_clean(self):
+        gw = FakeGateway([
+            _fc("read_file", {"path": "BACKLOG.md"}),
+            _fc("finish_task", {"summary": "done"}),
+        ])
+        verified, summary = agent_run.run_agent_loop(
+            "a task", gw, verify=lambda: (True, "all green"),
+        )
+        self.assertTrue(verified)
+        self.assertEqual(summary, "done")
+
+    def test_stalls_after_two_textual_non_tool_turns(self):
+        gw = FakeGateway([_txt("thinking..."), _txt("still thinking...")])
+        verified, reason = agent_run.run_agent_loop(
+            "a task", gw, verify=lambda: (True, ""),
+        )
+        self.assertFalse(verified)
+        self.assertIn("stalled", reason)
+
+    def test_turn_budget_exhausted(self):
+        gw = FakeGateway([_fc("read_file", {"path": "BACKLOG.md"})] * 3)
+        verified, reason = agent_run.run_agent_loop(
+            "a task", gw, verify=lambda: (True, ""), max_turns=3,
+        )
+        self.assertFalse(verified)
+        self.assertIn("turn budget exhausted", reason)
+
+    def test_repairs_on_failed_verify_then_succeeds(self):
+        gw = FakeGateway([
+            _fc("finish_task", {"summary": "first attempt"}),
+            _fc("write_file", {"path": "x.py", "content": "fixed"}),
+            _fc("finish_task", {"summary": "fixed it"}),
+        ])
+        verify_results = iter([(False, "tests still failing"), (True, "green")])
+        verified, summary = agent_run.run_agent_loop(
+            "a task", gw, verify=lambda: next(verify_results), max_repair_turns=3,
+        )
+        self.assertTrue(verified)
+        self.assertEqual(summary, "fixed it")
+
+    def test_gives_up_after_repair_budget_exhausted(self):
+        gw = FakeGateway([
+            _fc("finish_task", {"summary": "attempt 1"}),
+            _fc("finish_task", {"summary": "attempt 2"}),
+        ])
+        verified, reason = agent_run.run_agent_loop(
+            "a task", gw, verify=lambda: (False, "still red"), max_repair_turns=1,
+        )
+        self.assertFalse(verified)
+        self.assertIn("still red", reason)
 
 
 if __name__ == "__main__":
