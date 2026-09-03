@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +34,41 @@ _NEEDED_TABLES = [
     "Test bowling", "ODI bowling", "T20I bowling",
 ]
 _MIN_SITE_BYTES = 300_000
+
+
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug[:40].strip("-") or "task"
+
+
+def land_change(task: str, summary: str) -> str:
+    """Commits the working tree, pushes a branch, opens a PR, and enables
+    auto-merge on it. Returns the PR URL.
+
+    Assumes the caller already confirmed verify() passed -- this function
+    doesn't re-check, it just lands what's already there. Assumes git
+    identity is already configured (the workflow does this once, not per
+    run) and that the repo has "Allow auto-merge" enabled (see Task 10).
+    """
+    branch = f"auto/{_slugify(task)}-{date.today().isoformat()}"
+
+    subprocess.run(["git", "checkout", "-b", branch], cwd=ROOT, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True)
+    subprocess.run(["git", "commit", "-m", f"{task}\n\n{summary}"], cwd=ROOT, check=True)
+    subprocess.run(["git", "push", "-u", "origin", branch], cwd=ROOT, check=True)
+
+    pr = subprocess.run(
+        ["gh", "pr", "create", "--title", task[:70], "--body", summary,
+         "--base", "main", "--head", branch],
+        cwd=ROOT, check=True, capture_output=True, text=True,
+    )
+    pr_url = pr.stdout.strip()
+
+    subprocess.run(
+        ["gh", "pr", "merge", "--auto", "--squash", "--delete-branch", pr_url],
+        cwd=ROOT, check=True,
+    )
+    return pr_url
 
 
 def select_task(run=agent_tools.run_command) -> str | None:

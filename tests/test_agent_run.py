@@ -325,5 +325,20 @@ class TestRunAgentLoop(unittest.TestCase):
         self.assertIn("still red", reason)
 
 
+class TestSlugify(unittest.TestCase):
+    def test_lowercases_and_hyphenates(self):
+        self.assertEqual(
+            agent_run._slugify("Home/away split as a model term."),
+            "home-away-split-as-a-model-term",
+        )
+
+    def test_truncates_long_text(self):
+        long_task = "a " * 100
+        self.assertLessEqual(len(agent_run._slugify(long_task)), 40)
+
+    def test_empty_text_falls_back_to_task(self):
+        self.assertEqual(agent_run._slugify("!!!"), "task")
+
+
 if __name__ == "__main__":
     unittest.main()
