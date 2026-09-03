@@ -1,12 +1,10 @@
-"""Howzat, on the web: compare two players instantly, or ask it a free-text
-question for a grounded, argued verdict.
+"""Web front end. Compare two players instantly, or ask a free-text question
+and get an argued verdict.
 
-Both are thin UI over existing backends (src/tools.py's compare()/get_player()
-for the instant comparison, src/debate.py's Debate for the argued verdict) --
-no rating logic lives here, so the CLI, the static site, and this page can
-never disagree. The debate path falls back to the offline mock provider
-automatically if no working Gemini key is configured, so the page never
-hard-fails; the comparison path needs no AI at all and always works.
+Both call into the same backends the CLI uses (tools.compare/get_player,
+debate.Debate) instead of reimplementing anything, so this page and the
+terminal can't drift apart. No key configured -> the debate falls back to
+the offline mock provider; the comparison needs no AI at all.
 """
 from __future__ import annotations
 
@@ -32,12 +30,8 @@ for _key in ("GOOGLE_API_KEY", "GOOGLE_AI_STUDIO", "GEMINI_API_KEY"):
 
 st.set_page_config(page_title="Howzat", page_icon="🏏", layout="centered")
 
-# Same "Wisden Almanack" palette as the static site and the verdict card
-# (src/build_site.py, src/verdict_card.py) -- one design system across all
-# three surfaces. System-resident fonts only, no webfont/CDN request, same
-# constraint the static site holds itself to. Selectors are the same
-# data-testid set already confirmed against an installed Streamlit>=1.32
-# build's own frontend bundle source -- not guessed blind.
+# Same palette as build_site.py and verdict_card.py -- one design system,
+# not three. No webfonts, same rule the static site holds itself to.
 st.markdown(
     """
 <style>
@@ -263,15 +257,14 @@ st.divider()
 # ------------------------------------------------------------- ask/debate --
 st.markdown("### Or ask it anything")
 st.caption(
-    "A four-agent panel (statistician, historian, skeptic, judge) argues it "
-    "out and grounds every number in a real tool call. Takes 1–3 minutes -- "
-    "it's a real multi-step argument, not a lookup, and you'll see each "
-    "stage complete below rather than a silent wait."
+    "Four agents argue it out -- a statistician, a historian, a skeptic, "
+    "a judge -- and every number they cite has to come from a real lookup, "
+    "not a guess. Takes a couple of minutes; you'll see who's talking below."
 )
 
 provider, which = _provider()
 if which != "gemini":
-    st.info(f"Running on the offline demo provider ({which}). Answers are illustrative, not live-computed.")
+    st.info(f"No live key right now ({which}), so this is running on the offline demo data.")
 
 question = st.text_input(
     "Ask Howzat",
