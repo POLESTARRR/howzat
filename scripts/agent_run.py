@@ -22,6 +22,16 @@ import agent_tools  # noqa: E402
 
 _NEXT_ITEM_RE = re.compile(r"^\d+\.\s+(.*)$")
 
+# Same three checks, and the same site-table/size thresholds, as
+# .github/workflows/ci.yml -- kept in sync by hand since they're a handful
+# of lines each; if ci.yml's checks change, update this to match.
+_NEEDED_TABLES = [
+    "Settle", "Test batting", "ODI batting", "T20I batting",
+    "Women's ODI", "Women's T20I", "Women's Test",
+    "Test bowling", "ODI bowling", "T20I bowling",
+]
+_MIN_SITE_BYTES = 300_000
+
 
 def select_task(run=agent_tools.run_command) -> str | None:
     """A failing check first, else the next unchecked BACKLOG.md item.
@@ -61,3 +71,33 @@ def next_backlog_item(text: str | None = None) -> str | None:
             continue
         return item
     return None
+
+
+def verify(run=agent_tools.run_command) -> tuple[bool, str]:
+    """Re-runs ci.yml's checks: tests, validate.py, then the site build and
+    its table-presence check. Stops at the first failure.
+    """
+    log: list[str] = []
+
+    for name, command in [
+        ("tests", "PYTHONPATH=src python3 -m unittest discover -s tests"),
+        ("validate", "PYTHONPATH=src python3 src/validate.py"),
+        ("site build", "PYTHONPATH=src python3 src/build_site.py"),
+    ]:
+        out = run(command, timeout=600)
+        log.append(f"--- {name} ---\n{out['stdout'][-2000:]}\n{out['stderr'][-2000:]}")
+        if out["exit_code"] != 0:
+            return False, "\n".join(log)
+
+    html_path = ROOT / "out" / "index.html"
+    if not html_path.exists():
+        log.append("site build did not produce out/index.html")
+        return False, "\n".join(log)
+
+    html = html_path.read_text()
+    missing = [t for t in _NEEDED_TABLES if t not in html]
+    if missing or len(html) < _MIN_SITE_BYTES:
+        log.append(f"site check failed: missing={missing}, len={len(html)}")
+        return False, "\n".join(log)
+
+    return True, "\n".join(log)

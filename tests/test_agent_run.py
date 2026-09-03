@@ -184,5 +184,58 @@ class TestSelectTask(unittest.TestCase):
         self.assertEqual(task, agent_run.next_backlog_item())
 
 
+class TestVerify(unittest.TestCase):
+    def _fake_run_all_pass(self, site_html: str):
+        def fake_run(command, timeout=300):
+            if "build_site.py" in command:
+                (agent_run.ROOT / "out").mkdir(exist_ok=True)
+                (agent_run.ROOT / "out" / "index.html").write_text(site_html)
+            return {"exit_code": 0, "stdout": "ok", "stderr": ""}
+        return fake_run
+
+    def test_passes_when_everything_green(self):
+        good_html = ("Settle Test batting ODI batting T20I batting "
+                     "Women's ODI Women's T20I Women's Test "
+                     "Test bowling ODI bowling T20I bowling ") + ("x" * 300_000)
+        try:
+            passed, log = agent_run.verify(run=self._fake_run_all_pass(good_html))
+            self.assertTrue(passed)
+        finally:
+            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+
+    def test_fails_on_first_failing_command_without_running_later_ones(self):
+        calls = []
+
+        def fake_run(command, timeout=300):
+            calls.append(command)
+            if "unittest discover" in command:
+                return {"exit_code": 1, "stdout": "boom", "stderr": ""}
+            return {"exit_code": 0, "stdout": "", "stderr": ""}
+
+        passed, log = agent_run.verify(run=fake_run)
+        self.assertFalse(passed)
+        self.assertIn("boom", log)
+        self.assertEqual(len(calls), 1)  # never got to validate.py or build_site.py
+
+    def test_fails_when_site_missing_required_tables(self):
+        thin_html = "Settle Test batting" + ("x" * 300_000)  # missing most tables
+        try:
+            passed, log = agent_run.verify(run=self._fake_run_all_pass(thin_html))
+            self.assertFalse(passed)
+            self.assertIn("missing=", log)
+        finally:
+            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+
+    def test_fails_when_site_suspiciously_small(self):
+        tiny_html = ("Settle Test batting ODI batting T20I batting "
+                     "Women's ODI Women's T20I Women's Test "
+                     "Test bowling ODI bowling T20I bowling")
+        try:
+            passed, log = agent_run.verify(run=self._fake_run_all_pass(tiny_html))
+            self.assertFalse(passed)
+        finally:
+            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     unittest.main()
