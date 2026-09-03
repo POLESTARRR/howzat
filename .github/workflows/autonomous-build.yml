@@ -1,0 +1,50 @@
+name: Autonomous build
+
+on:
+  # schedule trigger is disabled for now: PRs opened using the default
+  # GITHUB_TOKEN don't trigger other workflows (GitHub deliberately blocks
+  # this to prevent workflow loops), so ci.yml's `test` check never runs
+  # independently on this workflow's PRs -- which defeats the point of
+  # "land via PR, gate on independent CI". Re-enable the schedule below
+  # once a GH_PAT secret exists: a fine-grained personal access token,
+  # created at github.com/settings/personal-access-tokens/new, scoped to
+  # POLESTARRR/howzat only, with `contents: write` + `pull-requests: write`
+  # repository permissions.
+  # schedule:
+  #   - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: autonomous-build
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -q pandas numpy scipy pyarrow beautifulsoup4 lxml requests
+
+      - name: Configure git identity
+        run: |
+          git config user.name "Dhruv Sharma"
+          git config user.email "274071256+POLESTARRR@users.noreply.github.com"
+
+      - name: Run the agent
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+        run: PYTHONPATH=src python3 scripts/agent_run.py
