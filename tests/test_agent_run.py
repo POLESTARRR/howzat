@@ -48,5 +48,25 @@ class TestPathSafety(unittest.TestCase):
             agent_tools._safe_path("/etc/passwd")
 
 
+class TestRunCommand(unittest.TestCase):
+    def test_captures_stdout_and_exit_code(self):
+        out = agent_tools.run_command("echo hello")
+        self.assertEqual(out["exit_code"], 0)
+        self.assertIn("hello", out["stdout"])
+
+    def test_nonzero_exit_captured_not_raised(self):
+        out = agent_tools.run_command("exit 3")
+        self.assertEqual(out["exit_code"], 3)
+
+    def test_timeout_reports_as_dict_not_exception(self):
+        out = agent_tools.run_command("sleep 5", timeout=1)
+        self.assertEqual(out["exit_code"], -1)
+        self.assertIn("timed out", out["stderr"])
+
+    def test_runs_with_repo_root_as_cwd(self):
+        out = agent_tools.run_command("cat BACKLOG.md")
+        self.assertIn("Howzat backlog", out["stdout"])
+
+
 if __name__ == "__main__":
     unittest.main()

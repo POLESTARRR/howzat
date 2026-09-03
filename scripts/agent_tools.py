@@ -43,3 +43,20 @@ def write_file(path: str, content: str) -> str:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content)
     return f"wrote {len(content)} bytes to {path}"
+
+
+def run_command(command: str, timeout: int = 300) -> dict:
+    """Runs `command` in a shell, cwd pinned to the repo root.
+
+    Never raises for a failing or slow command — a bad exit code or a
+    timeout is data the agent loop needs to see and react to, not a crash.
+    """
+    try:
+        proc = subprocess.run(
+            command, shell=True, cwd=REPO_ROOT,
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {"exit_code": -1, "stdout": "", "stderr": f"command timed out after {timeout}s"}
+    # Tool results get embedded in the next prompt; keep them bounded.
+    return {"exit_code": proc.returncode, "stdout": proc.stdout[-4000:], "stderr": proc.stderr[-4000:]}
