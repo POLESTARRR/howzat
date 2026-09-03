@@ -15,7 +15,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,7 +51,7 @@ def land_change(task: str, summary: str) -> str:
     identity is already configured (the workflow does this once, not per
     run) and that the repo has "Allow auto-merge" enabled (see Task 10).
     """
-    branch = f"auto/{_slugify(task)}-{date.today().isoformat()}"
+    branch = f"auto/{_slugify(task)}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
     subprocess.run(["git", "checkout", "-b", branch], cwd=ROOT, check=True)
     subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True)
@@ -86,7 +86,14 @@ def select_task(run=agent_tools.run_command) -> str | None:
     if validate["exit_code"] != 0:
         return "Fix this failing validation check:\n\n" + (validate["stdout"] + validate["stderr"])[-4000:]
 
-    return next_backlog_item()
+    item = next_backlog_item()
+    if item is None:
+        return None
+    return (
+        f"{item}\n\nWhen this is done, also edit BACKLOG.md to mark this "
+        "item [DONE] (prefix it exactly like the other completed items in "
+        "that file)."
+    )
 
 
 def next_backlog_item(text: str | None = None) -> str | None:
@@ -135,8 +142,11 @@ def verify(run=agent_tools.run_command) -> tuple[bool, str]:
 
     html = html_path.read_text()
     missing = [t for t in _NEEDED_TABLES if t not in html]
-    if missing or len(html) < _MIN_SITE_BYTES:
-        log.append(f"site check failed: missing={missing}, len={len(html)}")
+    if missing:
+        log.append(f"site check failed: missing required tables={missing}")
+        return False, "\n".join(log)
+    if len(html) < _MIN_SITE_BYTES:
+        log.append(f"site check failed: site too small, len={len(html)} < {_MIN_SITE_BYTES}")
         return False, "\n".join(log)
 
     return True, "\n".join(log)
@@ -250,9 +260,22 @@ def main() -> int:
     verified, summary = run_agent_loop(task, gw)
 
     if not verified:
+        # Safe only because this script only ever runs inside a disposable
+        # GitHub Actions container that gets destroyed after the job --
+        # never run this pattern against a developer's real working directory.
         subprocess.run(["git", "reset", "--hard"], cwd=ROOT)
         subprocess.run(["git", "clean", "-fd"], cwd=ROOT)
         _write_summary(f"No change landed this run.\n\nTask: {task}\n\nWhy: {summary}")
+        return 0
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True,
+    ).stdout.strip()
+    if not status:
+        _write_summary(
+            f"No change landed this run.\n\nTask: {task}\n\n"
+            f"Why: verified as already-satisfied (working tree unchanged): {summary}"
+        )
         return 0
 
     pr_url = land_change(task, summary)

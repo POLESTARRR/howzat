@@ -215,11 +215,33 @@ class TestSelectTask(unittest.TestCase):
             return {"exit_code": 0, "stdout": "", "stderr": ""}
 
         task = agent_run.select_task(run=fake_run)
-        # Whatever's actually next in the real BACKLOG.md right now.
-        self.assertEqual(task, agent_run.next_backlog_item())
+        # Whatever's actually next in the real BACKLOG.md right now, plus
+        # the appended instruction to mark it [DONE] in BACKLOG.md.
+        self.assertIn(agent_run.next_backlog_item(), task)
+        self.assertIn("mark this item [DONE]", task)
+
+    def test_returns_none_when_backlog_has_nothing_next(self):
+        def fake_run(command, timeout=300):
+            return {"exit_code": 0, "stdout": "", "stderr": ""}
+
+        old_item = agent_run.next_backlog_item
+        agent_run.next_backlog_item = lambda: None
+        try:
+            self.assertIsNone(agent_run.select_task(run=fake_run))
+        finally:
+            agent_run.next_backlog_item = old_item
 
 
 class TestVerify(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self._old_root = agent_run.ROOT
+        agent_run.ROOT = Path(self._tmpdir.name)
+
+    def tearDown(self):
+        agent_run.ROOT = self._old_root
+        self._tmpdir.cleanup()
+
     def _fake_run_all_pass(self, site_html: str):
         def fake_run(command, timeout=300):
             if "build_site.py" in command:
@@ -232,11 +254,8 @@ class TestVerify(unittest.TestCase):
         good_html = ("Settle Test batting ODI batting T20I batting "
                      "Women's ODI Women's T20I Women's Test "
                      "Test bowling ODI bowling T20I bowling ") + ("x" * 300_000)
-        try:
-            passed, log = agent_run.verify(run=self._fake_run_all_pass(good_html))
-            self.assertTrue(passed)
-        finally:
-            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+        passed, log = agent_run.verify(run=self._fake_run_all_pass(good_html))
+        self.assertTrue(passed)
 
     def test_fails_on_first_failing_command_without_running_later_ones(self):
         calls = []
@@ -254,22 +273,19 @@ class TestVerify(unittest.TestCase):
 
     def test_fails_when_site_missing_required_tables(self):
         thin_html = "Settle Test batting" + ("x" * 300_000)  # missing most tables
-        try:
-            passed, log = agent_run.verify(run=self._fake_run_all_pass(thin_html))
-            self.assertFalse(passed)
-            self.assertIn("missing=", log)
-        finally:
-            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+        passed, log = agent_run.verify(run=self._fake_run_all_pass(thin_html))
+        self.assertFalse(passed)
+        self.assertIn("missing required tables=", log)
+        self.assertNotIn("too small", log)
 
     def test_fails_when_site_suspiciously_small(self):
         tiny_html = ("Settle Test batting ODI batting T20I batting "
                      "Women's ODI Women's T20I Women's Test "
                      "Test bowling ODI bowling T20I bowling")
-        try:
-            passed, log = agent_run.verify(run=self._fake_run_all_pass(tiny_html))
-            self.assertFalse(passed)
-        finally:
-            (agent_run.ROOT / "out" / "index.html").unlink(missing_ok=True)
+        passed, log = agent_run.verify(run=self._fake_run_all_pass(tiny_html))
+        self.assertFalse(passed)
+        self.assertIn("site too small", log)
+        self.assertNotIn("missing required tables=", log)
 
 
 class TestRunAgentLoop(unittest.TestCase):
@@ -307,9 +323,15 @@ class TestRunAgentLoop(unittest.TestCase):
             _fc("finish_task", {"summary": "fixed it"}),
         ])
         verify_results = iter([(False, "tests still failing"), (True, "green")])
-        verified, summary = agent_run.run_agent_loop(
-            "a task", gw, verify=lambda: next(verify_results), max_repair_turns=3,
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            old_root = agent_tools.REPO_ROOT
+            agent_tools.REPO_ROOT = Path(tmp)
+            try:
+                verified, summary = agent_run.run_agent_loop(
+                    "a task", gw, verify=lambda: next(verify_results), max_repair_turns=3,
+                )
+            finally:
+                agent_tools.REPO_ROOT = old_root
         self.assertTrue(verified)
         self.assertEqual(summary, "fixed it")
 
@@ -338,6 +360,54 @@ class TestSlugify(unittest.TestCase):
 
     def test_empty_text_falls_back_to_task(self):
         self.assertEqual(agent_run._slugify("!!!"), "task")
+
+
+class TestMainSkipsLandingOnUnchangedTree(unittest.TestCase):
+    """main() must not call land_change() when run_agent_loop() reports
+    verified=True but the working tree has no actual changes (e.g. the
+    model called finish_task without writing anything, and verify()
+    passed because the tree was already in a passing state).
+    """
+
+    def test_unchanged_tree_after_verified_true_skips_land_change(self):
+        import subprocess as _subprocess
+        import types
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+
+            fake_gateway_module = types.ModuleType("gateway")
+            fake_gateway_module.Gateway = lambda: object()
+            old_gateway_module = sys.modules.get("gateway")
+
+            old_root = agent_run.ROOT
+            old_select_task = agent_run.select_task
+            old_run_agent_loop = agent_run.run_agent_loop
+            old_land_change = agent_run.land_change
+
+            def fail_if_called(*args, **kwargs):
+                raise AssertionError("land_change must not run on an unchanged tree")
+
+            agent_run.ROOT = root
+            sys.modules["gateway"] = fake_gateway_module
+            agent_run.select_task = lambda: "a task"
+            agent_run.run_agent_loop = lambda task, gateway: (True, "already satisfied")
+            agent_run.land_change = fail_if_called
+
+            try:
+                result = agent_run.main()
+            finally:
+                agent_run.ROOT = old_root
+                agent_run.select_task = old_select_task
+                agent_run.run_agent_loop = old_run_agent_loop
+                agent_run.land_change = old_land_change
+                if old_gateway_module is None:
+                    sys.modules.pop("gateway", None)
+                else:
+                    sys.modules["gateway"] = old_gateway_module
+
+            self.assertEqual(result, 0)
 
 
 class TestWriteSummary(unittest.TestCase):
