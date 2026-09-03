@@ -12,46 +12,59 @@ import html
 import json
 from typing import Any
 
+# Same "Wisden Almanack" palette as the static site (src/build_site.py):
+# warm paper, ink type, one almanack-yellow accent, serif headlines. Kept in
+# sync by hand -- the two files don't share an import path, but a shared
+# design system means one page and one card should never look unrelated.
 CSS = """
-:root{--bg:#faf9f7;--card:#fff;--ink:#16150f;--muted:#6b6862;--line:#e5e1d8;
-  --accent:#0f6b4f;--soft:#d9ece4;--warn:#a4423a;--warnbg:#f7e4e2}
+:root{
+  --bg:#f4f0e6;--card:#fbf9f3;--ink:#14120c;--muted:#6e6455;--line:#ded6c2;
+  --accent:#f2c300;--accent-ink:#8a6b00;--soft:#faf0cc;
+  --warn:#8c2318;--warnbg:#f6e4de;--ok:#2f6b45;--okbg:#e3ede2;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
 :root:not([data-theme="light"]){@media(prefers-color-scheme:dark){
-  --bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;--line:#2e2c28;
-  --accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}}
-:root[data-theme="dark"]{--bg:#131311;--card:#1c1b19;--ink:#f2efe8;--muted:#9d9890;
-  --line:#2e2c28;--accent:#5ec39a;--soft:#1e3b31;--warn:#e0796e;--warnbg:#3a201d}
+  --bg:#14130f;--card:#1c1a15;--ink:#f0ebdd;--muted:#9a9284;--line:#2e2b23;
+  --accent:#e8be2a;--accent-ink:#e8be2a;--soft:#332b12;
+  --warn:#d4685c;--warnbg:#3a201d;--ok:#6aa77f;--okbg:#1c2e21}}
+:root[data-theme="dark"]{
+  --bg:#14130f;--card:#1c1a15;--ink:#f0ebdd;--muted:#9a9284;--line:#2e2b23;
+  --accent:#e8be2a;--accent-ink:#e8be2a;--soft:#332b12;
+  --warn:#d4685c;--warnbg:#3a201d;--ok:#6aa77f;--okbg:#1c2e21}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);margin:0;padding:36px 18px 70px;
-  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+  font:16px/1.6 var(--serif);-webkit-font-smoothing:antialiased}
 .card{max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--line);
   border-radius:14px;overflow:hidden}
 .q{padding:26px 28px 20px;border-bottom:1px solid var(--line)}
-.tag{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--accent);background:var(--soft);padding:3px 9px;border-radius:5px}
-.q h1{font-size:23px;margin:12px 0 0;letter-spacing:-.02em;line-height:1.3}
+.tag{font:600 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent-ink);background:var(--soft);padding:3px 9px;border-radius:5px}
+.q h1{font:400 26px/1.3 var(--serif);margin:14px 0 0;letter-spacing:-.02em}
 .vd{padding:24px 28px;background:var(--soft)}
-.vd .big{font-size:20px;font-weight:650;letter-spacing:-.015em;margin:0 0 10px}
+.vd .big{font:600 21px/1.3 var(--sans);letter-spacing:-.015em;margin:0 0 10px}
 .meta{display:flex;gap:26px;flex-wrap:wrap;margin-top:14px}
-.meta div{font-size:13px}
-.meta b{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;
+.meta div{font:14px var(--serif)}
+.meta b{display:block;color:var(--muted);font:600 10.5px var(--sans);text-transform:uppercase;
   letter-spacing:.08em;margin-bottom:3px}
-.conf{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.conf{font:700 15px var(--sans);font-variant-numeric:tabular-nums;color:var(--accent-ink)}
 .panel{padding:8px 28px 22px}
 .turn{padding:16px 0;border-bottom:1px solid var(--line)}
 .turn:last-child{border-bottom:none}
-.role{font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted);
+.role{font:600 11px var(--sans);letter-spacing:.1em;color:var(--muted);
   text-transform:uppercase}
-.tool{font:11px ui-monospace,Menlo,monospace;color:var(--accent);margin-left:8px}
-.turn p{margin:7px 0 0}
+.tool{font:11px var(--mono);color:var(--accent-ink);margin-left:8px}
+.turn p{margin:7px 0 0;font:15px/1.6 var(--serif)}
 .warn{margin:0 28px 22px;padding:12px 15px;background:var(--warnbg);color:var(--warn);
-  border-radius:9px;font-size:13.5px}
-.ok{margin:0 28px 22px;padding:12px 15px;background:var(--soft);color:var(--accent);
-  border-radius:9px;font-size:13.5px}
-details{margin:0 28px 24px;font-size:13px}
+  border-radius:9px;font:14px var(--sans)}
+.ok{margin:0 28px 22px;padding:12px 15px;background:var(--okbg);color:var(--ok);
+  border-radius:9px;font:14px var(--sans)}
+details{margin:0 28px 24px;font:13px var(--sans)}
 summary{cursor:pointer;color:var(--muted);user-select:none}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px;
-  overflow-x:auto;font:11.5px/1.5 ui-monospace,Menlo,monospace;margin:10px 0 0}
-footer{max-width:720px;margin:18px auto 0;color:var(--muted);font-size:12.5px;text-align:center}
+  overflow-x:auto;font:11.5px/1.5 var(--mono);margin:10px 0 0}
+footer{max-width:720px;margin:18px auto 0;color:var(--muted);font:12.5px var(--sans);text-align:center}
 """
 
 

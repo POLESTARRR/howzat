@@ -29,6 +29,51 @@ for _key in ("GOOGLE_API_KEY", "GOOGLE_AI_STUDIO", "GEMINI_API_KEY"):
 
 st.set_page_config(page_title="Howzat", page_icon="🏏", layout="centered")
 
+# Same "Wisden Almanack" palette as the static site and the verdict card
+# (src/build_site.py, src/verdict_card.py) -- one design system across all
+# three surfaces. System-resident fonts only, no webfont/CDN request, same
+# constraint the static site holds itself to. Selectors are the same
+# data-testid set already confirmed against an installed Streamlit>=1.32
+# build for this session's other app (Recast) -- not guessed blind.
+st.markdown(
+    """
+<style>
+:root{
+  --paper:#f4f0e6;--panel:#fbf9f3;--ink:#14120c;--muted:#6e6455;--line:#ded6c2;
+  --accent-ink:#8a6b00;--accent-wash:#faf0cc;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+  --paper:#14130f;--panel:#1c1a15;--ink:#f0ebdd;--muted:#9a9284;--line:#2e2b23;
+  --accent-ink:#e8be2a;--accent-wash:#332b12;}}
+
+.stApp, [data-testid="stAppViewContainer"] { background:var(--paper) !important; }
+[data-testid="stHeader"] { background:transparent !important; }
+[data-testid="stMainBlockContainer"] { max-width:720px; padding-top:3rem; }
+
+h1 { font-family:var(--serif) !important; font-weight:400 !important;
+     letter-spacing:-.02em !important; color:var(--ink) !important; }
+[data-testid="stCaptionContainer"] { font-family:var(--sans) !important;
+     color:var(--muted) !important; }
+p, li, label, .stMarkdown { font-family:var(--serif); color:var(--ink); }
+
+[data-testid="stTextInput"] input {
+  font-family:var(--serif) !important; background:var(--panel) !important;
+  border:1px solid var(--line) !important; color:var(--ink) !important;
+}
+[data-testid="baseButton-primary"] {
+  background:var(--accent-wash) !important; color:var(--accent-ink) !important;
+  border:1px solid var(--accent-ink) !important; font-family:var(--sans) !important;
+  font-weight:600 !important;
+}
+[data-testid="stAlertContainer"] { font-family:var(--sans) !important; }
+hr { border-color:var(--line) !important; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 
 @st.cache_resource
 def _provider():
@@ -45,10 +90,23 @@ def _provider():
         return MockProvider(), f"mock (gateway unavailable: {str(e).splitlines()[0][:90]})"
 
 
-st.title("🏏 Howzat")
+# Same masthead as the static site's homepage (build_site.py: "Howzat / Era-
+# adjusted cricket ratings" eyebrow, "Settle it." headline) -- one identity,
+# not a differently-branded second page.
+st.markdown(
+    """
+<p style="font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.18em;
+   color:var(--muted);margin:0 0 18px">
+  <b style="color:var(--ink);font-weight:700">Howzat</b> &nbsp;Era-adjusted cricket ratings
+</p>
+<h1 style="font:400 56px/0.95 var(--serif) !important;margin:0 0 16px;
+   letter-spacing:-.02em">Settle <em style="font-style:italic;color:var(--accent-ink)">it.</em></h1>
+""",
+    unsafe_allow_html=True,
+)
 st.caption(
-    "Era-adjusted cricket ratings. Ask a question and get a verdict grounded "
-    "in every Test/ODI/T20I innings since 1877 -- never a bare opinion."
+    "Ask a question and get a verdict grounded in every Test, ODI and T20I "
+    "innings since 1877 -- never a bare opinion."
 )
 
 provider, which = _provider()
