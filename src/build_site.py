@@ -255,7 +255,14 @@ h2{font:400 30px/1.15 var(--serif);margin:64px 0 8px;letter-spacing:-.015em}
 .opts .none{padding:14px;color:var(--muted);font:14px var(--serif)}
 .pick label,.ctl label{display:block;font:600 10.5px/1 var(--sans);text-transform:uppercase;
   letter-spacing:.13em;color:var(--muted);margin-bottom:7px}
-.pick input{width:100%}
+/* A chevron, so the field reads as something you can open and pick from
+   rather than a plain text box. Without it nobody knows to click. */
+.pick input{width:100%;padding-right:34px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+    linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 18px) calc(50% + 1px),calc(100% - 13px) calc(50% + 1px);
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.pick input:focus{cursor:text}
 .vs{color:var(--muted);font:italic 17px var(--serif);padding-bottom:9px}
 .verdict{padding:22px}
 .vhead{font:400 27px/1.2 var(--serif);letter-spacing:-.015em;margin:0 0 6px}
