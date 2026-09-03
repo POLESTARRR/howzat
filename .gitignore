@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # 531MB of cached Statsguru HTML: regenerable, never commit
 data/raw/
