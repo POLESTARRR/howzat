@@ -340,5 +340,31 @@ class TestSlugify(unittest.TestCase):
         self.assertEqual(agent_run._slugify("!!!"), "task")
 
 
+class TestWriteSummary(unittest.TestCase):
+    def test_writes_to_github_step_summary_when_set(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.md"
+            old = os.environ.get("GITHUB_STEP_SUMMARY")
+            os.environ["GITHUB_STEP_SUMMARY"] = str(summary_path)
+            try:
+                agent_run._write_summary("hello from the agent")
+                self.assertEqual(summary_path.read_text(), "hello from the agent")
+            finally:
+                if old is None:
+                    os.environ.pop("GITHUB_STEP_SUMMARY", None)
+                else:
+                    os.environ["GITHUB_STEP_SUMMARY"] = old
+
+    def test_does_not_crash_when_unset(self):
+        import os
+        old = os.environ.pop("GITHUB_STEP_SUMMARY", None)
+        try:
+            agent_run._write_summary("no crash please")  # just must not raise
+        finally:
+            if old is not None:
+                os.environ["GITHUB_STEP_SUMMARY"] = old
+
+
 if __name__ == "__main__":
     unittest.main()

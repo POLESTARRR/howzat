@@ -11,6 +11,7 @@ Run directly: PYTHONPATH=src python3 scripts/agent_run.py
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -227,3 +228,37 @@ def run_agent_loop(
         current = "Tool results:\n" + "\n".join(results)
 
     return False, f"turn budget exhausted ({max_turns} turns) without a verified finish_task"
+
+
+def _write_summary(text: str) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        Path(path).write_text(text)
+    print(text)
+
+
+def main() -> int:
+    task = select_task()
+    if task is None:
+        _write_summary("Nothing queued -- BACKLOG.md's ## Next is empty.")
+        return 0
+
+    from gateway import Gateway  # imported here, not at module level, so
+    # tests that never construct a real Gateway don't need a working API key.
+
+    gw = Gateway()
+    verified, summary = run_agent_loop(task, gw)
+
+    if not verified:
+        subprocess.run(["git", "reset", "--hard"], cwd=ROOT)
+        subprocess.run(["git", "clean", "-fd"], cwd=ROOT)
+        _write_summary(f"No change landed this run.\n\nTask: {task}\n\nWhy: {summary}")
+        return 0
+
+    pr_url = land_change(task, summary)
+    _write_summary(f"Opened {pr_url}\n\nTask: {task}\n\n{summary}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
