@@ -18,6 +18,7 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import agent_tools  # noqa: E402
+import agent_run  # noqa: E402
 
 
 class TestPathSafety(unittest.TestCase):
@@ -93,6 +94,57 @@ class TestDispatch(unittest.TestCase):
     def test_tool_schemas_cover_every_tool(self):
         names = {s["name"] for s in agent_tools.TOOL_SCHEMAS}
         self.assertEqual(names, {"read_file", "write_file", "run_command", "finish_task"})
+
+
+class TestNextBacklogItem(unittest.TestCase):
+    SAMPLE = """# Howzat backlog
+
+## Done
+- [x] Something already done
+
+## Next
+1. [DONE] BOWL+ all three formats.
+2. Home/away split as a model term.
+3. Batting-position covariate.
+
+## Known limitations
+- Not a bug, just a limit.
+"""
+
+    def test_returns_first_unchecked_item(self):
+        item = agent_run.next_backlog_item(self.SAMPLE)
+        self.assertEqual(item, "Home/away split as a model term.")
+
+    def test_skips_done_items(self):
+        text = self.SAMPLE.replace(
+            "2. Home/away split as a model term.",
+            "2. [DONE] Home/away split as a model term.",
+        )
+        item = agent_run.next_backlog_item(text)
+        self.assertEqual(item, "Batting-position covariate.")
+
+    def test_returns_none_when_all_done(self):
+        text = self.SAMPLE.replace(
+            "2. Home/away split as a model term.",
+            "2. [DONE] Home/away split as a model term.",
+        ).replace(
+            "3. Batting-position covariate.",
+            "3. [DONE] Batting-position covariate.",
+        )
+        self.assertIsNone(agent_run.next_backlog_item(text))
+
+    def test_returns_none_with_no_next_heading(self):
+        self.assertIsNone(agent_run.next_backlog_item("# Just a title\n\nNo sections here.\n"))
+
+    def test_stops_at_next_heading(self):
+        text = self.SAMPLE  # "## Known limitations" follows "## Next"
+        item = agent_run.next_backlog_item(text)
+        self.assertNotIn("Not a bug", item or "")
+
+    def test_reads_real_backlog_file_without_crashing(self):
+        # No assertion on content (it changes over time) -- just that the
+        # real file parses without raising.
+        agent_run.next_backlog_item()
 
 
 if __name__ == "__main__":
