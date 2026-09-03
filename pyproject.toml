@@ -1,0 +1,27 @@
+[project]
+name = "howzat"
+version = "0.1.0"
+description = "Era-adjusted cricket ratings, and a multi-agent panel that settles arguments with them"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pandas>=2.0", "numpy>=1.24", "scipy>=1.10", "pyarrow>=12.0",
+    "beautifulsoup4>=4.12", "lxml>=4.9", "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["playwright>=1.40"]
+
+[project.scripts]
+howzat = "howzat:main"
+
+[project.urls]
+Homepage = "https://polestarrr.github.io/howzat/"
+Source = "https://github.com/POLESTARRR/howzat"
+
+[tool.setuptools]
+py-modules = ["howzat"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

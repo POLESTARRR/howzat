@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push: {branches: [main]}
+  pull_request: {branches: [main]}
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -q pandas numpy scipy pyarrow beautifulsoup4 lxml requests
+
+      - name: Tests
+        run: PYTHONPATH=src python3 -m unittest discover -s tests -v
+
+      - name: Validation checks
+        # A rating that disagrees with settled cricket opinion is broken, not
+        # brave. Asserts Bradman first, canonical greats in the top 100,
+        # intervals narrowing with sample size, and career wicket totals
+        # matching the published record exactly.
+        run: PYTHONPATH=src python3 src/validate.py
+
+      - name: Site builds and carries every table
+        # Deliberately NOT a byte diff against docs/. Floating-point formatting
+        # differs between platforms, so comparing generated numeric output made
+        # CI fail on a machine difference rather than a real regression. What
+        # matters is that the page builds and contains every rating table.
+        run: |
+          PYTHONPATH=src python3 src/build_site.py
+          python3 - <<'PY'
+          import pathlib, sys
+          h = pathlib.Path("out/index.html").read_text()
+          # "Settle" not "Settle it.": the masthead italicises the second word,
+          # so the headline is markup ("Settle <em>it.</em>") not one string.
+          need = ["Settle", "Test batting", "ODI batting", "T20I batting",
+                  "Women's ODI", "Women's T20I", "Women's Test",
+                  "Test bowling", "ODI bowling", "T20I bowling"]
+          missing = [n for n in need if n not in h]
+          if missing:
+              sys.exit(f"site is missing: {missing}")
+          if len(h) < 300_000:
+              sys.exit(f"site suspiciously small: {len(h)} bytes")
+          print(f"site OK: {len(h):,} bytes, all {len(need)} tables present")
+          PY
